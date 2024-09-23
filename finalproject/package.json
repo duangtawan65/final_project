@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "postcss-import": "^16.1.0",
+    "postcss-nested": "^6.2.0",
+    "postcss-simple-vars": "^7.0.1"
+  }
+}
