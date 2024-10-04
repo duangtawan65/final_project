@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "healmind",
     "tailwind",
     "theme",
+    "django_browser_reload",
 ]
 
 MIDDLEWARE = [
@@ -50,6 +51,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_browser_reload.middleware.BrowserReloadMiddleware",
 ]
 
 ROOT_URLCONF = "finalproject.urls"
@@ -57,7 +59,7 @@ ROOT_URLCONF = "finalproject.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [os.path.join(BASE_DIR, 'templates')],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -118,8 +120,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = "static/"
-
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # If you're placing static files at the project level
+]
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -127,3 +132,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 TAILWIND_APP_NAME = 'theme'
 NPM_BIN_PATH = "C:/Program Files/nodejs/npm.cmd"
+
+LOGIN_REDIRECT_URL = 'home'
+LOGOUT_REDIRECT_URL = 'home'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'megalodicz@gmail.com'  # อีเมลของคุณ
+EMAIL_HOST_PASSWORD = 'bvmy bovs bnly uple'  # รหัสผ่านที่สร้างจาก Google App Password
+
+LOGIN_URL = '/login/'
+TEMPLATES[0]['OPTIONS']['debug'] = True

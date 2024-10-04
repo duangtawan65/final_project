@@ -25,7 +25,10 @@ module.exports = {
          * Adjust the following line to match your project structure.
          */
         '../../**/templates/**/*.html',
-
+        '../../healmind/templates/registration/*.html',
+        '../../healmind/templates/*.html',
+        '../../healmind/templates/**/*.html',
+        '../../**/*.py',
         /**
          * JS: If you use Tailwind CSS in JavaScript, uncomment the following lines and make sure
          * patterns match your project structure.

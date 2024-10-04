@@ -3,33 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home Page</title>
+    <title>HealMind - Home</title>
     <script src="//unpkg.com/alpinejs" defer></script>
+    <!-- Load static files tag -->
+    {% load static %}
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@100;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
+    <style>
+        * {
+           font-family: "Fraunces", serif;
+        }
+    </style>
 </head>
-<body x-data="navigation" style="background-color: black; color: white;">
+<body class="bg-black text-white">
 
+    <!-- Navigation Bar -->
+    <header class="bg-white shadow-md text-black">
+        <div class="container mx-auto flex justify-between items-center py-4 px-4">
+            <div class="flex items-center">
+                <img src="{% static 'your-logo.png' %}" alt="HealMind Logo" class="h-10 w-10">
+                <span class="ml-3 text-xl font-bold">HealMind</span>
+            </div>
+            <nav class="space-x-4">
+                <a href="#" class="hover:text-gray-600">Home</a>
+                <a href="#" class="hover:text-gray-600">About</a>
+                <a href="#" class="hover:text-gray-600">How to Use</a>
 
+                {% if user.is_authenticated %}
+                    <form method="post" action="{% url 'logout' %}" class="inline-block">
+                        {% csrf_token %}
+                        <button type="submit" class="hover:text-gray-600">Logout</button>
+                    </form>
+                    <span class="ml-3">Hello, {{ user.username }}</span>
+                {% else %}
+                    <a href="{% url 'login' %}" class="hover:text-gray-600">Sign in</a>
+                    <a href="{% url 'register' %}" class="hover:text-gray-600">Sign up</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
 
-    <!-- Main Content -->
-    <h1>Welcome to the Home Page!</h1>
+    <!-- Hero Section -->
+    <section class="bg-cover bg-center h-screen" style="background-image: url('{% static 'images/genshin-impact-mona-fischl-4k-wallpaper-uhdpaper.com-718@0@h.jpg' %}');">
+        <div class="container mx-auto h-full flex flex-col justify-center items-center text-center">
+            <h1 class="text-5xl text-black font-bold">HealMind</h1>
+            <p class="mt-4 text-2xl text-black">ตรวจสุขภาพจิตของคุณ</p>
+            <p class="mt-2 text-black">คุณจะไม่เป็นไรจริงๆ เชื่อเรา! ทำได้เพียงแค่คุณเดินไปข้างหน้า</p>
+        </div>
+    </section>
 
-    {% if user.is_authenticated %}
-        <p>Hello, {{ user.username }}! You are logged in.</p>
-        <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit">Logout</button>
-        </form>
-    {% else %}
-        <a href="{% url 'login' %}">
-            <button>Login</button>
-        </a>
-
-        <a href="{% url 'register' %}">
-            <button>Register</button>
-        </a>
-    {% endif %}
-
-
+    <!-- Icon Section -->
+    <section class="bg-purple-100 py-10">
+        <div class="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-purple-200 p-6 rounded-lg shadow-md text-center">
+                <img src="{% static 'images/icon1.png' %}" alt="icon1" class="mx-auto mb-4">
+                <h3 class="text-xl font-semibold mb-2">ทำแบบทดสอบ</h3>
+            </div>
+            <div class="bg-purple-200 p-6 rounded-lg shadow-md text-center">
+                <img src="{% static 'images/icon2.png' %}" alt="icon2" class="mx-auto mb-4">
+                <h3 class="text-xl font-semibold mb-2">ความรู้</h3>
+            </div>
+            <div class="bg-purple-200 p-6 rounded-lg shadow-md text-center">
+                <img src="{% static 'images/icon3.png' %}" alt="icon3" class="mx-auto mb-4">
+                <h3 class="text-xl font-semibold mb-2">ติดต่อปรึกษาแพทย์</h3>
+            </div>
+        </div>
+    </section>
 
 </body>
 </html>
