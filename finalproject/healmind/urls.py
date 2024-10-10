@@ -1,8 +1,9 @@
 # In your `urls.py`
 from django.urls import path,include
 from django.contrib.auth import views as auth_views
-from healmind.views import *
-
+from .views import *
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 urlpatterns = [
@@ -19,5 +20,13 @@ urlpatterns = [
     path('reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='password_reset_complete.html'),name='password_reset_complete'),
 
 
-    path('__reload__/', include('django_browser_reload.urls')),
-]
+    path('profile/', profile_view, name='profile'),
+
+
+    path('questionnaire/', select_quiz_view, name='select_questions'),
+    path('questionnaire/<int:questionnaire_id>/', take_quiz_view, name='take_questions'),
+    path('questionnaire/<int:questionnaire_id>/result/<int:score>/', quiz_result_view, name='questions_result'),
+
+
+
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

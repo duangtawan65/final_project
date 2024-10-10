@@ -2,21 +2,57 @@
 <html lang="en">
 <head>
     {% tailwind_css %}
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="//unpkg.com/alpinejs" defer></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@100;400;700&display=swap" rel="stylesheet">
-
     <style>
         * {
            font-family: "Fraunces", serif;
         }
+        /* Hide the navbar when 'no-navbar-page' class is present */
+        .no-navbar-page header {
+            display: none;
+        }
     </style>
 </head>
-<body class="bg-black text-white">
+<body class="bg-yellow-100 text-white {% block body_class %}{% endblock %}">
+    <!-- Navbar included in every page except when class 'no-navbar-page' is applied -->
+    <header class="bg-white shadow-md text-black">
+        <div class="container mx-auto flex justify-between items-center py-4 px-4">
+            <a href="{% url 'home' %}" >
+                <div class="flex items-center">
+                    <img src="{% static 'images/HealMind.png' %}" alt="HealMind Logo" class="mx-auto" style="height: 70px; width: 70px;">
+                    <span class="ml-3 text-xl font-bold">HealMind</span>
+                </div>
+            </a>
+            <nav class="space-x-4 flex items-center">
+                <a href="{% url 'home' %}" class="hover:text-gray-600">Home</a>
+                <a href="#" class="hover:text-gray-600">About</a>
+
+                {% if user.is_authenticated %}
+                    <!-- Profile Icon and Username -->
+                    <div class="flex items-center space-x-10    ">
+                        <a href="{% url 'profile' %}" class="flex items-center space-x-2">
+                            <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full" style="height: 30px; width: 30px;">
+                        </a>
+                        <!-- Logout Button -->
+                        <form method="post" action="{% url 'logout' %}" class="inline-block">
+                            {% csrf_token %}
+                            <button type="submit" class="hover:text-gray-600">Logout</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <a href="{% url 'login' %}" class="hover:text-gray-600">Sign in</a>
+                    <a href="{% url 'register' %}" class="hover:text-gray-600">Sign up</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+
     <div class="container mx-auto px-4">
       {% block main %}
       <!-- Content will be injected here -->

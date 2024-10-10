@@ -1,36 +1,72 @@
 {% extends 'base.html' %}
 
+{% block body_class %}no-navbar-page{% endblock %}
+
 {% block main %}
-{% csrf_token %}
 <div class="h-screen flex justify-center items-center">
   <div class="bg-gray-900 shadow-lg rounded-lg p-8 max-w-md w-full">
     <h2 class="text-2xl font-semibold text-center mb-6">Create Your Account</h2>
 
     <form method="post" class="space-y-4">
       {% csrf_token %}
+      {{ form.non_field_errors }}
 
       <!-- Username Field -->
       <div>
         <label for="username" class="block text-sm font-medium">Username</label>
-        <input type="text" id="username" name="username" class="w-full px-4 py-2 border border-gray-500 rounded-lg bg-black text-white focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your username">
+        <input type="text" id="username" name="username" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your username">
       </div>
 
       <!-- Email Field -->
       <div>
         <label for="email" class="block text-sm font-medium">Email</label>
-        <input type="email" id="email" name="email" class="w-full px-4 py-2 border border-gray-500 rounded-lg bg-black text-white focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your email">
+        <input type="email" id="email" name="email" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your email">
+      </div>
+
+      <!-- First Name Field -->
+      <div>
+        <label for="first_name" class="block text-sm font-medium">First Name</label>
+        <input type="text" id="first_name" name="first_name" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your first name">
+      </div>
+
+      <!-- Last Name Field -->
+      <div>
+        <label for="last_name" class="block text-sm font-medium">Last Name</label>
+        <input type="text" id="last_name" name="last_name" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your last name">
+      </div>
+
+      <!-- Gender Field -->
+      <div>
+        <label for="gender" class="block text-sm font-medium">Gender</label>
+        <select id="gender" name="gender" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <!-- Age Field -->
+      <div>
+        <label for="age" class="block text-sm font-medium">Age</label>
+        <input type="number" id="age" name="age" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your age">
+      </div>
+
+      <!-- Location Field -->
+      <div>
+        <label for="location" class="block text-sm font-medium">Location</label>
+        <input type="text" id="location" name="location" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your location">
       </div>
 
       <!-- Password Field -->
       <div>
         <label for="password1" class="block text-sm font-medium">Password</label>
-        <input type="password" id="password1" name="password1" class="w-full px-4 py-2 border border-gray-500 rounded-lg bg-black text-white focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your password">
+        <input type="password" id="password1" name="password1" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Enter your password">
       </div>
 
       <!-- Confirm Password Field -->
       <div>
         <label for="password2" class="block text-sm font-medium">Confirm Password</label>
-        <input type="password" id="password2" name="password2" class="w-full px-4 py-2 border border-gray-500 rounded-lg bg-black text-white focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Confirm your password">
+        <input type="password" id="password2" name="password2" class="w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg" placeholder="Confirm your password">
       </div>
 
       <!-- Submit Button -->

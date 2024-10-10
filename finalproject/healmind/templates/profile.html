@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block main %}
+<div class="w-4/5 p-10">
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="flex items-center space-x-6">
+            <!-- Profile Picture -->
+            <div class="text-center mb-6 relative">
+                <img id="profile-preview"
+                     src="{% if profile.profile_picture %}{{ profile.profile_picture.url }}{% else %}{% static 'theme/default_profile.png' %}{% endif %}"
+                     alt="Profile Image"
+                     class="rounded-full w-32 h-32 mx-auto mb-6 border-4 border-blue-500 object-cover">
+                <!-- Change Profile Picture Button -->
+                <label class="cursor-pointer absolute bottom-0 right-0 bg-blue-500 text-white py-1 px-2 rounded">
+                    Change Picture
+                    <input type="file" name="profile_picture" id="profilePicInput" class="hidden">
+                </label>
+            </div>
+            <div>
+                <h2 class="text-2xl text-black font-bold">{{ profile.first_name }} {{ profile.last_name }}</h2>
+                <p class="text-gray-600">{{ profile.location }}</p>
+            </div>
+        </div>
+
+        <!-- Profile Form -->
+        <div class="grid grid-cols-2 gap-8 mt-10">
+            {{ form.first_name.errors }}
+            <div class="mb-4">
+                <label for="first_name" class="text-black block mb-1">First name:</label>
+                {{ form.first_name }}
+            </div>
+
+            <div class="mb-4">
+                <label for="last_name" class="text-black block mb-1">Last name:</label>
+                {{ form.last_name }}
+            </div>
+
+            <div class="mb-4">
+                <label for="gender" class="text-black block mb-1">Gender:</label>
+                {{ form.gender }}
+            </div>
+
+            <div class="mb-4">
+                <label for="age" class="text-black block mb-1">Age:</label>
+                {{ form.age }}
+            </div>
+
+            <div class="mb-4 col-span-2">
+                <label for="location" class="text-black block mb-1">Location:</label>
+                {{ form.location }}
+            </div>
+        </div>
+
+        <div class="mt-6">
+            <button type="submit" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600">Update Profile</button>
+        </div>
+    </form>
+</div>
+
+<!-- JavaScript to handle profile picture preview -->
+<script>
+    document.getElementById('profilePicInput').addEventListener('change', function(event) {
+        const reader = new FileReader();
+        reader.onload = function() {
+            document.getElementById('profile-preview').src = reader.result;
+        }
+        reader.readAsDataURL(event.target.files[0]);
+    });
+</script>
+{% endblock %}

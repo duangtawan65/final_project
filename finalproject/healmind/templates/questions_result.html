@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="container mx-auto mt-10 p-6 bg-purple-100 rounded-lg shadow-lg">
+    <div class="text-center mb-6">
+        <h2 class="text-2xl text-purple-800 font-semibold">ผลการทดสอบของคุณ</h2>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow-md">
+        <p class="text-md text-gray-600 mb-4">ระดับความเครียด: {{ stress_level }}</p>
+        <p class="text-gray-600">คำแนะนำ: {{ recommendation }}</p>
+    </div>
+    <div class="mt-6 text-center">
+        <a href="{% url 'select_questions' %}" class="bg-yellow-400 text-white font-semibold px-4 py-2 rounded-lg">กลับสู่หน้าหลัก</a>
+    </div>
+</div>
+{% endblock %}
