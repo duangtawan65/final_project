@@ -110,7 +110,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Bangkok"
 
 USE_I18N = True
 
@@ -141,7 +141,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'megalodicz@gmail.com'  # อีเมลของคุณ
 EMAIL_HOST_PASSWORD = 'bvmy bovs bnly uple'  # รหัสผ่านที่สร้างจาก Google App Password
 
-LOGIN_URL = '/login/'
+LOGIN_URL = '/accounts/login/'
 TEMPLATES[0]['OPTIONS']['debug'] = True
 
 MEDIA_URL = '/media/'

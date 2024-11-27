@@ -37,15 +37,8 @@ class CustomUserCreationForm(UserCreationForm):
 
 
 
-class ProfileForm(forms.ModelForm):
-    class Meta:
-        model = Profile
-        fields = ['first_name', 'last_name', 'gender', 'age', 'location', 'profile_picture']
-
 
 # forms.py
-from django import forms
-from .models import Profile
 
 class ProfileForm(forms.ModelForm):
     GENDER_CHOICES = [

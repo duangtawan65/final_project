@@ -11,7 +11,7 @@ urlpatterns = [
     path('', home_view, name='home'),
     # authentication
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('register/', register_view, name='register'),
 
     path('password_reset/', auth_views.PasswordResetView.as_view(template_name='password_reset_form.html'), name='password_reset'),
@@ -21,6 +21,9 @@ urlpatterns = [
 
 
     path('profile/', profile_view, name='profile'),
+    path('doctor_profile/', doctor_profile_view, name='doctor_profile'),  # สำหรับ Doctor
+    path('admin_dashboard/', admin_dashboard_view, name='admin_dashboard'),
+
 
 
     path('questionnaire/', select_quiz_view, name='select_questions'),

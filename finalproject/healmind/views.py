@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect,get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.views import LogoutView
@@ -6,10 +6,20 @@ from .forms import CustomUserCreationForm
 from .forms import ProfileForm
 from django.contrib.auth.decorators import login_required
 from .models import *
+from django.contrib.auth.models import User, Group
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.sessions.models import Session
+from django.utils.timezone import  now, timedelta, localtime
 # Home view
 def home_view(request):
-    return render(request, 'home.html')
+    # Redirect admins to the admin dashboard
+    if request.user.is_staff:
+        return redirect('admin_dashboard')  # Replace with your actual admin dashboard URL name
 
+    # For regular users, try to render the home page even if they don't have a profile
+    profile = getattr(request.user, 'profile', None)  # Use getattr to avoid exceptions
+
+    return render(request, 'home.html', {'profile': profile})
 
 # Register view
 def register_view(request):
@@ -33,19 +43,30 @@ class CustomLogoutView(LogoutView):
         return self.post(request, *args, **kwargs)
 
 
+
+
 @login_required
 def profile_view(request):
-    profile = request.user.profile  # Assuming you have a OneToOne relation between User and Profile
-
+    profile = request.user.profile  # ดึงข้อมูลโปรไฟล์ของผู้ใช้
     if request.method == 'POST':
-        form = ProfileForm(request.POST, request.FILES, instance=profile)  # Use request.FILES to handle file uploads
+        form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
-            return redirect('profile')  # Redirect to the profile page after saving
+            return redirect('profile')  # กลับไปที่หน้าโปรไฟล์
     else:
-        form = ProfileForm(instance=profile)
+        form = ProfileForm(instance=profile)  # โหลดข้อมูลปัจจุบันของผู้ใช้
 
-    return render(request, 'profile.html', {'form': form, 'profile': profile})
+    return render(request, 'profile.html', {
+        'form': form,  # ส่งฟอร์มไปที่ template
+        'profile': profile
+    })
+
+
+@login_required
+def doctor_profile_view(request):
+    profile = request.user.profile
+    doctor_profile = profile.doctor_profile  # ดึงข้อมูล DoctorProfile
+    return render(request, 'doctor_profile.html', {'profile': profile, 'doctor_profile': doctor_profile})
 
 
 
@@ -96,3 +117,62 @@ def quiz_result_view(request, questionnaire_id, score):
         'recommendation': recommendation,
         'stress_level': stress_level,  # You can also pass the stress level if needed in the template
     })
+
+
+@login_required
+def doctor_dashboard(request):
+    if request.user.profile.role != 'doctor':
+        return redirect('home')  # Redirect if the user is not a doctor
+    return render(request, 'doctor_dashboard.html')
+
+def is_admin(user):
+    return user.is_staff
+
+def admin_dashboard_view(request):
+    users = User.objects.all()
+
+    # Assign roles and calculate online status and formatted login
+    for user in users:
+        if user.is_staff and user.is_superuser:
+            user.role = 'admin'
+        elif user.groups.filter(name='doctor').exists():
+            user.role = 'doctor'
+        elif user.groups.filter(name='member').exists():
+            user.role = 'member'
+        else:
+            user.role = 'member'
+
+
+        user.is_online = is_user_online(user)
+
+
+        user.formatted_last_login = (
+            localtime(user.last_login).strftime('%d/%m/%Y %H:%M:%S')
+        )
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        user_id = request.POST.get("user_id")
+        user = User.objects.get(id=user_id)
+
+        if action == "change_role":
+            new_role = request.POST.get("role")
+            user.groups.clear()
+            if new_role in ['member', 'doctor']:
+                group, created = Group.objects.get_or_create(name=new_role)
+                user.groups.add(group)
+            if new_role == "admin":
+                user.is_staff = True
+                user.is_superuser = True
+                user.save()
+        elif action == "delete_user":
+            user.delete()
+
+        return redirect("admin_dashboard")
+
+    return render(request, "admin_dashboard.html", {"users": users})
+
+def is_user_online(user):
+    if user.last_login:
+        return user.last_login >= now() - timedelta(minutes=5)
+    return False

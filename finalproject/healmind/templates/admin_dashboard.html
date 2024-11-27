@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block main %}
+<div class="container mx-auto mt-8 bg-white p-6 rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold mb-4">All Users: {{ users.count }}</h1>
+    <div class="overflow-x-auto">
+        <table class="min-w-full table-auto border-collapse border border-gray-300">
+            <thead class="bg-gray-200 text-gray-600">
+                <tr>
+                    <th class="py-4 px-6 text-left border border-gray-300">User</th>
+                    <th class="py-4 px-6 text-left border border-gray-300">User Role</th>
+                    <th class="py-4 px-6 text-left border border-gray-300">Email</th>
+                    <th class="py-4 px-6 text-left border border-gray-300">Status</th>
+                    <th class="py-4 px-6 text-left border border-gray-300">Last Login</th>
+                    <th class="py-4 px-6 text-center border border-gray-300">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-800">
+                {% for user in users %}
+                <tr class="hover:bg-gray-100">
+                    <td class="py-4 px-6 border border-gray-300">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gray-300 rounded-full"></div>
+                            <span>{{ user.username }}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-6 border border-gray-300">
+                        <span class="px-3 py-1 rounded-full text-sm
+                            {% if user.role == 'member' %}bg-purple-300{% elif user.role == 'doctor' %}bg-green-300{% elif user.role == 'admin' %}bg-red-300{% endif %}">
+                            {{ user.role|title }}
+                        </span>
+                    </td>
+                    <td class="py-4 px-6 border border-gray-300">{{ user.email }}</td>
+                    <td class="py-4 px-6 border border-gray-300">
+                         {% if user.is_online %}
+                            <span class="text-green-500 font-bold">Online</span>
+                        {% else %}
+                            <span class="text-red-500 font-bold">Offline</span>
+                        {% endif %}
+                    </td>
+
+                     <td class="py-2 px-4 text-black">
+                        {{ user.formatted_last_login }}
+                    </td>
+                    <td class="py-4 px-6 border border-gray-300 text-center">
+                        <!-- Role Change Form -->
+                        <form method="post" class="inline-block">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <input type="hidden" name="action" value="change_role">
+                            <select name="role" class="border rounded px-2 py-1 text-black">
+                                <option value="member" {% if user.role == 'member' %}selected{% endif %}>Member</option>
+                                <option value="doctor" {% if user.role == 'doctor' %}selected{% endif %}>Doctor</option>
+                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                            </select>
+                            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Change Role</button>
+                        </form>
+
+                        <!-- Delete User Form -->
+                        <form method="post" class="inline-block ml-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <input type="hidden" name="action" value="delete_user">
+                            <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

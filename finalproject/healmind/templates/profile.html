@@ -2,9 +2,11 @@
 {% load static %}
 
 {% block main %}
-<div class="w-4/5 p-10">
-    <form method="POST" enctype="multipart/form-data">
+<div class="container mx-auto my-8 bg-yellow-100 p-6 rounded shadow-lg">
+    <h1 class="text-3xl font-bold mb-4 text-center">Profile</h1>
+    <form method="POST" enctype="multipart/form-data" class="space-y-4">
         {% csrf_token %}
+
         <div class="flex items-center space-x-6">
             <!-- Profile Picture -->
             <div class="text-center mb-6 relative">
@@ -18,37 +20,28 @@
                     <input type="file" name="profile_picture" id="profilePicInput" class="hidden">
                 </label>
             </div>
-            <div>
-                <h2 class="text-2xl text-black font-bold">{{ profile.first_name }} {{ profile.last_name }}</h2>
-                <p class="text-gray-600">{{ profile.location }}</p>
-            </div>
         </div>
 
         <!-- Profile Form -->
-        <div class="grid grid-cols-2 gap-8 mt-10">
-            {{ form.first_name.errors }}
-            <div class="mb-4">
-                <label for="first_name" class="text-black block mb-1">First name:</label>
+        <div class="grid grid-cols-2 gap-8">
+            <div>
+                <label for="first_name" class="block font-semibold text-gray-700">First Name:</label>
                 {{ form.first_name }}
             </div>
-
-            <div class="mb-4">
-                <label for="last_name" class="text-black block mb-1">Last name:</label>
+            <div>
+                <label for="last_name" class="block font-semibold text-gray-700">Last Name:</label>
                 {{ form.last_name }}
             </div>
-
-            <div class="mb-4">
-                <label for="gender" class="text-black block mb-1">Gender:</label>
+            <div>
+                <label for="gender" class="block font-semibold text-gray-700">Gender:</label>
                 {{ form.gender }}
             </div>
-
-            <div class="mb-4">
-                <label for="age" class="text-black block mb-1">Age:</label>
+            <div>
+                <label for="age" class="block font-semibold text-gray-700">Age:</label>
                 {{ form.age }}
             </div>
-
-            <div class="mb-4 col-span-2">
-                <label for="location" class="text-black block mb-1">Location:</label>
+            <div class="col-span-2">
+                <label for="location" class="block font-semibold text-gray-700">Location:</label>
                 {{ form.location }}
             </div>
         </div>
@@ -58,15 +51,4 @@
         </div>
     </form>
 </div>
-
-<!-- JavaScript to handle profile picture preview -->
-<script>
-    document.getElementById('profilePicInput').addEventListener('change', function(event) {
-        const reader = new FileReader();
-        reader.onload = function() {
-            document.getElementById('profile-preview').src = reader.result;
-        }
-        reader.readAsDataURL(event.target.files[0]);
-    });
-</script>
 {% endblock %}

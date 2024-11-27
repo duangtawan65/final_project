@@ -31,7 +31,15 @@
                 {% if user.is_authenticated %}
                     <!-- Profile Icon and Username -->
                     <div class="flex items-center space-x-2">
-                        <a href="{% url 'profile' %}" class="flex items-center space-x-2">
+                        {% if profile.role == 'doctor' %}
+                            <a href="{% url 'doctor_profile' %}" class="flex items-center space-x-2">
+                        {% elif profile.role == 'member' %}
+                            <a href="{% url 'profile' %}" class="flex items-center space-x-2">
+                        {% elif profile.role == 'admin' %}
+                            <a href="{% url 'admin_dashboard' %}" class="flex items-center space-x-2">
+                        {% else %}
+                            <a href="#" class="flex items-center space-x-2"> <!-- Default case -->
+                        {% endif %}
                             <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full" style="height: 30px; width: 30px;">
                         </a>
                         <!-- Logout Button -->
