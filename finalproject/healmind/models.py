@@ -76,3 +76,4 @@ class Result(models.Model):
 
     def __str__(self):
         return f'{self.stress_level} ({self.score_low}-{self.score_high})'
+

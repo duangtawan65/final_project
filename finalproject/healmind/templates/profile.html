@@ -17,7 +17,7 @@
                 <!-- Change Profile Picture Button -->
                 <label class="cursor-pointer absolute bottom-0 right-0 bg-blue-500 text-white py-1 px-2 rounded">
                     Change Picture
-                    <input type="file" name="profile_picture" id="profilePicInput" class="hidden">
+                    <input type="file" name="profile_picture" id="profilePicInput" class="hidden" onchange="previewImage(event)">
                 </label>
             </div>
         </div>
@@ -51,4 +51,21 @@
         </div>
     </form>
 </div>
+
+
+<script>
+    // Function to show a preview of the selected profile picture
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function() {
+            const preview = document.getElementById('profile-preview');
+            preview.src = reader.result;
+        }
+        if (event.target.files[0]) {
+            reader.readAsDataURL(event.target.files[0]);
+        }
+    }
+</script>
 {% endblock %}
+
+

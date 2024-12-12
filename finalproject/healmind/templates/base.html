@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 {% load static tailwind_tags %}
 <html lang="en">
 <head>
@@ -38,6 +39,8 @@
                         <a href="{% url 'profile' %}" class="flex items-center space-x-2">
                             <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full" style="height: 30px; width: 30px;">
                         </a>
+
+
                         <!-- Logout Button -->
                         <form method="post" action="{% url 'logout' %}" class="inline-block">
                             {% csrf_token %}

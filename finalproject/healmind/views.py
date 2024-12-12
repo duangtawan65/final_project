@@ -10,6 +10,9 @@ from django.contrib.auth.models import User, Group
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
 from django.utils.timezone import  now, timedelta, localtime
+from django.shortcuts import render , redirect , HttpResponse
+
+
 # Home view
 def home_view(request):
     # Redirect admins to the admin dashboard
@@ -176,3 +179,5 @@ def is_user_online(user):
     if user.last_login:
         return user.last_login >= now() - timedelta(minutes=5)
     return False
+
+

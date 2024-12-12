@@ -1,0 +1,5 @@
+django
+pandas
+django_browser_reload
+Pillow
+django-tailwind

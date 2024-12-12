@@ -1,64 +1,81 @@
+import os.path
+from django.contrib.auth.models import User
 import pandas as pd
 from django.core.management.base import BaseCommand
-from healmind.models import Questionnaire, Question, Choice, Result
+from healmind.models import *
+from openpyxl import load_workbook
+from django.conf import settings
+from django.core.exceptions import ValidationError
+
+
 
 class Command(BaseCommand):
     help = 'Load data from an Excel file into the database'
 
     def handle(self, *args, **kwargs):
         # Load the Excel data
-        file_path = 'C:/Users/Asus/PycharmProjects/final_project/finalproject/healmind/excel_files/questionnaire_data.xlsx'
+        file_path = os.path.join(settings.BASE_DIR,'healmind/fixtures/data1.xlsx')
         excel_data = pd.read_excel(file_path, sheet_name=None)
 
-        # Extract the data from each sheet
-        questionnaire_data = excel_data['Questionnaire']
-        question_data = excel_data['Question']
-        choice_data = excel_data['Choice']
-        result_data = excel_data['Result']
+        # Load Excel workbook
+        wb = load_workbook(filename=file_path)
+        ws = wb.active  # สมมติว่า sheet แรกคือที่เราต้องการอ่าน
 
-        # Insert the data into the database
-        for _, row in questionnaire_data.iterrows():
-            Questionnaire.objects.get_or_create(
-                id=row['Questionnaire_ID'],  # Set ID only if it's necessary
-                defaults={
-                    'questionnaire_name': row['Questionnaire_Name'],  # Correct field name for the model
-                    'description': row['Description']
-                }
+        ws = wb['register']
+        for row in ws:
+            values = [cell.value for cell in row]
+            if values[0] != 'id':
+                user = User.objects.create_user(values[1], values[2], str(values[8]), pk=values[0], first_name=values[3], last_name=values[4])
+                register, created = Profile.objects.get_or_create(user=user, location=values[7],gender=values[5],age=values[6],role=values[10])
+
+        ws_questionnaire = wb['questionnaire']
+        for row in ws_questionnaire.iter_rows(min_row=2, values_only=True):  # Skipping header row
+            questionnaire_id, name, description = row
+
+
+            questionnaire, created = Questionnaire.objects.get_or_create(
+                id=questionnaire_id,  # This is the field we are looking to match
+                defaults={'questionnaire_name': name, 'description': description}
+                # This will set the fields if the record doesn't exist
             )
 
-        for _, row in question_data.iterrows():
-            questionnaire = Questionnaire.objects.get(id=row['Questionnaire_ID'])
-            Question.objects.get_or_create(
-                id=row['Question_ID'],  # Explicitly setting the Question ID if necessary
-                defaults={
-                    'questionnaire': questionnaire,  # Foreign key relationship
-                    'question_content': row['Question_content']  # Correct field name for question content
-                }
+        ws_questions = wb['question']
+        for row in ws_questions.iter_rows(min_row=2, values_only=True):  # Skipping header row
+            question_id, questionnaire_id, content = row
+
+            # Get or create the questionnaire
+            questionnaire = Questionnaire.objects.get(id=questionnaire_id)
+
+            # Get or create the question
+            question, created = Question.objects.get_or_create(
+                id=question_id,
+                defaults={'questionnaire': questionnaire, 'question_content': content}
             )
 
-        for _, row in choice_data.iterrows():
-            question = Question.objects.get(id=row['Question_ID'])
-            Choice.objects.get_or_create(
-                id=row['Response_ID'],  # Explicitly setting the Response ID if necessary
-                defaults={
-                    'question': question,  # Foreign key relationship
-                    'response_value': row['Response_Value'],  # Correct field name
-                    'response_text': row['Response_Text']  # Correct field name
-                }
+        # 4. Load "Choice" sheet
+        ws_choice = wb['choice']
+        for row in ws_choice.iter_rows(min_row=2, values_only=True):  # Skipping header row
+            response_id, question_id, response_value, response_text = row
+            question = Question.objects.get(id=question_id)
+
+            # Get or create the choice
+            choice, created = Choice.objects.get_or_create(
+                id=response_id,
+                defaults={'question': question, 'response_value': response_value, 'response_text': response_text}
             )
 
-        for _, row in result_data.iterrows():
-            questionnaire = Questionnaire.objects.get(id=row['Questionnaire_ID'])
-            Result.objects.get_or_create(
-                id=row['Result_ID'],  # Explicitly setting the Result ID if necessary
-                defaults={
-                    'questionnaire': questionnaire,  # Foreign key relationship
-                    'score_low': row['Score_Low'],  # Correct field name
-                    'score_high': row['Score_High'],  # Correct field name
-                    'stress_level': row['Stress_Level'],  # Correct field name
-                    'result_description': row['Result_Description']  # Correct field name
-                }
+        # 5. Load "Results" sheet
+        ws_results = wb['result']
+        for row in ws_results.iter_rows(min_row=2, values_only=True):  # Skipping header row
+            result_id, questionnaire_id, score_low, score_high, stress_level, result_description = row
+            questionnaire = Questionnaire.objects.get(id=questionnaire_id)
+
+            # Get or create the result
+            result, created = Result.objects.get_or_create(
+                id=result_id,
+                defaults={'questionnaire': questionnaire, 'score_low': score_low, 'score_high': score_high,
+                          'stress_level': stress_level, 'result_description': result_description}
             )
 
-        # Print success message
-        self.stdout.write(self.style.SUCCESS('Data successfully loaded into the database'))
+        self.stdout.write(self.style.SUCCESS('Data loaded successfully!'))
+

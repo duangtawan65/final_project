@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <center><h1>Hello , Welcome to my chat site ! {{request.user}}</h1></center>
+    <br>
+    {% if request.user.is_authenticated  %}
+    <center>Logout the chat Page <a href="{% url 'logout' %}">Logout</a></center>
+    {% endif %}
+
+    <!-- Chat Container -->
+    <div id="id_chat_item_container" style="border: 2px solid #ccc; padding: 10px; width: 400px; height: 300px; overflow-y: scroll;">
+        <!-- ข้อความแชททั้งหมดจะแสดงที่นี่ -->
+    </div>
+
+    <!-- Message Input Section -->
+    <div style="display: flex; margin-top: 10px;">
+      <input type="text" id="id_message_send_input" style="width: 80%; padding: 10px; margin-right: 10px; border: 1px solid #ccc; border-radius: 5px;" />
+      <button type="submit" id="id_message_send_button" style="padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+        Send Message
+      </button>
+    </div>
+
+    <script>
+      const chatSocket = new WebSocket("ws://" + window.location.host + "/");
+
+      chatSocket.onopen = function (e) {
+        console.log("The connection was setup successfully!");
+      };
+
+      chatSocket.onclose = function (e) {
+        console.log("Something unexpected happened!");
+      };
+
+      document.querySelector("#id_message_send_input").focus();
+      document.querySelector("#id_message_send_input").onkeyup = function (e) {
+        if (e.keyCode == 13) { // กด Enter เพื่อส่งข้อความ
+          document.querySelector("#id_message_send_button").click();
+        }
+      };
+
+      document.querySelector("#id_message_send_button").onclick = function (e) {
+        var messageInput = document.querySelector("#id_message_send_input").value;
+        chatSocket.send(JSON.stringify({ message: messageInput, username: "{{request.user.username}}" }));
+      };
+
+      chatSocket.onmessage = function (e) {
+        const data = JSON.parse(e.data);
+        var div = document.createElement("div");
+        div.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+        document.querySelector("#id_message_send_input").value = "";
+        document.querySelector("#id_chat_item_container").appendChild(div);
+        // Auto scroll to the latest message
+        const chatContainer = document.querySelector("#id_chat_item_container");
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      };
+    </script>
+  </body>
+</html>

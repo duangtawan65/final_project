@@ -36,11 +36,14 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "daphne",
     "django.contrib.staticfiles",
+    "chat",
     "healmind",
     "tailwind",
     "theme",
     "django_browser_reload",
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -73,6 +76,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "finalproject.wsgi.application"
+ASGI_APPLICATION = "finalproject.asgi.application"
 
 
 # Database
@@ -146,3 +150,10 @@ TEMPLATES[0]['OPTIONS']['debug'] = True
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
