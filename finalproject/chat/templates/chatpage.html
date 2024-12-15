@@ -1,11 +1,10 @@
-<!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
+
+{% block main %}
   <body>
-    <center><h1>Hello , Welcome to my chat site ! {{request.user}}</h1></center>
+    <center><h1>Hello, Welcome to my chat site! {{request.user}}</h1></center>
     <br>
-    {% if request.user.is_authenticated  %}
-    <center>Logout the chat Page <a href="{% url 'logout' %}">Logout</a></center>
-    {% endif %}
+
 
     <!-- Chat Container -->
     <div id="id_chat_item_container" style="border: 2px solid #ccc; padding: 10px; width: 400px; height: 300px; overflow-y: scroll;">
@@ -13,12 +12,22 @@
     </div>
 
     <!-- Message Input Section -->
-    <div style="display: flex; margin-top: 10px;">
-      <input type="text" id="id_message_send_input" style="width: 80%; padding: 10px; margin-right: 10px; border: 1px solid #ccc; border-radius: 5px;" />
+    <div style="display: flex; margin-top: 10px; ">
+      <input type="text" id="id_message_send_input" style="width: 80%; padding: 10px; margin-right: 10px; border: 1px solid #ccc; border-radius: 5px; color:black" />
       <button type="submit" id="id_message_send_button" style="padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
         Send Message
       </button>
     </div>
+
+
+    <!-- Exit Room Button -->
+    <form method="POST" action="{% url 'chat:exit_room' room.id %}">
+      {% csrf_token %}
+      <button type="submit" class="px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600">
+        Exit Room
+      </button>
+    </form>
+
 
     <script>
       const chatSocket = new WebSocket("ws://" + window.location.host + "/");
@@ -46,13 +55,44 @@
       chatSocket.onmessage = function (e) {
         const data = JSON.parse(e.data);
         var div = document.createElement("div");
-        div.innerHTML = `<strong>${data.username}:</strong> ${data.message}`;
+
+        // Check if the message is from the current user or the other person
+        if (data.username === "{{request.user.username}}") {
+          // Add CSS class for current user (align right)
+          div.classList.add('chat-message', 'chat-end');
+          div.innerHTML = `<div class="bg-blue-500 text-white p-2 rounded-lg">${data.username}: ${data.message}</div>`;
+        } else {
+          // Add CSS class for the other person (align left)
+          div.classList.add('chat-message', 'chat-start');
+          div.innerHTML = `<div class="bg-gray-300 text-black p-2 rounded-lg">${data.username}: ${data.message}</div>`;
+        }
+
         document.querySelector("#id_message_send_input").value = "";
         document.querySelector("#id_chat_item_container").appendChild(div);
+
         // Auto scroll to the latest message
         const chatContainer = document.querySelector("#id_chat_item_container");
         chatContainer.scrollTop = chatContainer.scrollHeight;
       };
     </script>
+
+    <style>
+      .chat-message {
+        margin: 10px 0;
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+
+      .chat-end {
+        align-self: flex-end;
+        text-align: right;
+      }
+
+      .chat-start {
+        align-self: flex-start;
+        text-align: left;
+      }
+    </style>
   </body>
 </html>
+{% endblock %}
