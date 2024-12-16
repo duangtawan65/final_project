@@ -1,16 +1,15 @@
-from django.shortcuts import render, redirect,get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.views import LogoutView
 from .forms import CustomUserCreationForm
 from .forms import ProfileForm
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required,user_passes_test
 from .models import *
 from django.contrib.auth.models import User, Group
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
 from django.utils.timezone import  now, timedelta, localtime
-from django.shortcuts import render , redirect , HttpResponse
+from django.shortcuts import render , redirect , HttpResponse,get_object_or_404
 
 
 # Home view
@@ -50,7 +49,9 @@ class CustomLogoutView(LogoutView):
 
 @login_required
 def profile_view(request):
-    profile = request.user.profile  # ดึงข้อมูลโปรไฟล์ของผู้ใช้
+    # ดึงข้อมูล Profile หรือสร้างใหม่ถ้าไม่มี
+    profile, created = Profile.objects.get_or_create(user=request.user)
+
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
@@ -60,7 +61,7 @@ def profile_view(request):
         form = ProfileForm(instance=profile)  # โหลดข้อมูลปัจจุบันของผู้ใช้
 
     return render(request, 'profile.html', {
-        'form': form,  # ส่งฟอร์มไปที่ template
+        'form': form,
         'profile': profile
     })
 
@@ -129,8 +130,9 @@ def doctor_dashboard(request):
     return render(request, 'doctor_dashboard.html')
 
 def is_admin(user):
-    return user.is_staff
+    return user.is_staff and user.is_superuser
 
+@user_passes_test(is_admin)
 def admin_dashboard_view(request):
     users = User.objects.all()
 

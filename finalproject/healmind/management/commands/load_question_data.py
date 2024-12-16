@@ -25,7 +25,14 @@ class Command(BaseCommand):
         for row in ws:
             values = [cell.value for cell in row]
             if values[0] != 'id':
-                user = User.objects.create_user(values[1], values[2], str(values[8]), pk=values[0], first_name=values[3], last_name=values[4])
+                user = User.objects.create_user(
+                    username=values[1],  # username
+                    email=values[2],  # email
+                    password=str(values[8]),  # ใช้ password จาก values[8]
+                    pk=values[0],  # ใช้ id ของผู้ใช้
+                    first_name=values[3],  # first_name
+                    last_name=values[4]  # last_name
+                )
                 register, created = Profile.objects.get_or_create(user=user, location=values[7],gender=values[5],age=values[6],role=values[10])
 
         ws_questionnaire = wb['questionnaire']
