@@ -23,11 +23,11 @@ class CustomUserCreationForm(UserCreationForm):
             user.save()
 
             # Create the Profile instance
-            profile = User.objects.create(
+            profile = Profile.objects.create(
                 user=user,
                 first_name=self.cleaned_data['first_name'],
                 last_name=self.cleaned_data['last_name'],
-
+                email=self.cleaned_data['email'],
                 gender=self.cleaned_data['gender'],
                 age=self.cleaned_data['age'],
                 location=self.cleaned_data['location']
@@ -48,7 +48,6 @@ class ProfileForm(forms.ModelForm):
         ('Other', 'Other'),
     ]
 
-    # ฟิลด์อีเมล
     email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={
         'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'
     }))
@@ -59,46 +58,27 @@ class ProfileForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['first_name', 'last_name', 'gender', 'age', 'location', 'profile_picture',
-                  'email']  # Include email in the fields
+        fields = ['first_name', 'last_name', 'gender', 'age', 'location', 'profile_picture', 'email']  # Include email in the fields
         widgets = {
-            'first_name': forms.TextInput(
-                attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
-            'last_name': forms.TextInput(
-                attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
-            'age': forms.NumberInput(
-                attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
-            'location': forms.TextInput(
-                attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
+            'first_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
+            'last_name': forms.TextInput(attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
+            'age': forms.NumberInput(attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
+            'location': forms.TextInput(attrs={'class': 'w-full px-4 py-2 bg-black text-white border border-gray-500 rounded-lg'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        # ดึงข้อมูลจาก User instance
-        user = kwargs.get('instance').user if 'instance' in kwargs else None
-        super(ProfileForm, self).__init__(*args, **kwargs)
-
-        # ถ้า User instance มีการเชื่อมโยงไว้
-        if user:
-            self.fields['email'].initial = user.email  # กำหนดค่าเริ่มต้นให้ฟิลด์ email
-            self.fields['first_name'].initial = user.first_name  # กำหนดค่าเริ่มต้นให้ฟิลด์ first_name
-            self.fields['last_name'].initial = user.last_name  # กำหนดค่าเริ่มต้นให้ฟิลด์ last_name
-
     def save(self, commit=True):
-        # ดึง User instance จาก Profile instance
-        user = self.instance.user  # ใช้ User instance ที่มีการเชื่อมโยงกับ Profile
+        # คุณต้องดึง User instance จากฟอร์มนี้ เช่นจาก `request.user`
+        user = self.instance.user  # ใช้ User instance จาก Profile
 
-        # อัปเดตข้อมูลใน User
-        user.first_name = self.cleaned_data['first_name']
-        user.last_name = self.cleaned_data['last_name']
-        user.email = self.cleaned_data['email']
+        # ตรวจสอบว่า user คือตัวเดียวกับที่ส่งมาจากฟอร์ม
+        user.email = self.cleaned_data['email']  # ทำการอัปเดตอีเมล
 
         if commit:
-            user.save()  # บันทึกข้อมูล User
+            user.save()  # บันทึกการอัปเดต User instance
 
             # บันทึก Profile
             profile = super().save(commit=False)
-            profile.user = user  # เชื่อมโยง Profile กับ User instance
+            profile.user = user  # ต้องแน่ใจว่า `user` เป็น User instance
             profile.save()
 
         return user
-
