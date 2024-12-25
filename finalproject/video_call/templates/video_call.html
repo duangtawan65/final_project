@@ -1,94 +1,54 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Call</title>
+</head>
+<body>
+    <h1>Welcome to the Video Call</h1>
 
-{% block main %}
-  <div class="container mx-auto p-6 bg-white rounded-lg shadow-lg">
-    <h2 class="text-2xl font-bold text-center mb-6">Start Video Call</h2>
-    <div id="video-container" style="display:none;">
-        <video id="local-video" autoplay muted></video>
-        <video id="remote-video" autoplay></video>
-    </div>
+    <!-- แสดงภาพวิดีโอจากกล้อง -->
+    <video id="localVideo" autoplay muted></video>
 
-    <div class="text-center mt-6">
-        <button id="start-video-call" class="px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600">
-            Start Video Call
-        </button>
-    </div>
-  </div>
+    <button id="startCallBtn">Start Call</button>
 
-  <script>
-    let localStream;
-    let peerConnection;
-    const localVideo = document.getElementById('local-video');
-    const remoteVideo = document.getElementById('remote-video');
+    <script>
+        // WebSocket สำหรับเชื่อมต่อ
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/video_call/');
 
-    async function getLocalStream() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = stream;
-        localStream = stream;
-    }
-
-    function createPeerConnection() {
-        const configuration = {
-            iceServers: [
-                {
-                    urls: 'stun:stun.l.google.com:19302'
-                }
-            ]
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            console.log(data.message);
         };
 
-        peerConnection = new RTCPeerConnection(configuration);
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        peerConnection.ontrack = event => {
-            remoteVideo.srcObject = event.streams[0];
-        };
-
-        peerConnection.onicecandidate = event => {
-            if (event.candidate) {
-                socket.send(JSON.stringify({ message: { type: 'ice-candidate', candidate: event.candidate } }));
-            }
-        };
-    }
-
-    async function createOffer() {
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        socket.send(JSON.stringify({ message: { type: 'offer', offer: offer } }));
-    }
-
-    async function createAnswer() {
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        socket.send(JSON.stringify({ message: { type: 'answer', answer: answer } }));
-    }
-
-    document.getElementById("start-video-call").onclick = function() {
-        getLocalStream();
-        createPeerConnection();
-        createOffer();
-        document.getElementById("video-container").style.display = "block";
-    };
-    const roomName = "test_room";  // Set room name dynamically or get it from URL
-    const socket = new WebSocket("ws://" + window.location.host + "/ws/video_call/" + roomName + "/");
-
-    socket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        if (data.message.type === 'offer') {
-            peerConnection.setRemoteDescription(new RTCSessionDescription(data.message.offer));
-            createAnswer();
-        } else if (data.message.type === 'answer') {
-            peerConnection.setRemoteDescription(new RTCSessionDescription(data.message.answer));
-        } else if (data.message.type === 'ice-candidate') {
-            const candidate = new RTCIceCandidate(data.message.candidate);
-            peerConnection.addIceCandidate(candidate);
+        function sendMessage(message) {
+            socket.send(JSON.stringify({
+                'message': message
+            }));
         }
-    };
-    function endVideoCall() {
-       peerConnection.close();
-       peerConnection = null;
-       document.getElementById("video-container").style.display = "none";
-       document.getElementById("start-video-call").style.display = "block";
-    }
 
-  </script>
-{% endblock %}
+        // ฟังก์ชันเริ่มต้นการโทร
+        document.getElementById('startCallBtn').addEventListener('click', function() {
+            // เริ่ม WebRTC
+            createOffer();
+        });
+
+        const peerConnection = new RTCPeerConnection();
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(function(stream) {
+                document.getElementById('localVideo').srcObject = stream;
+                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+            });
+
+        // สร้าง offer และส่งไปยัง WebSocket
+        function createOffer() {
+            peerConnection.createOffer()
+                .then(offer => {
+                    return peerConnection.setLocalDescription(offer);
+                })
+                .then(() => {
+                    sendMessage(peerConnection.localDescription);
+                });
+        }
+    </script>
+</body>
+</html>
