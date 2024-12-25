@@ -22,5 +22,6 @@ urlpatterns = [
     path("__reload__/", include('django_browser_reload.urls')),
     path("",include('healmind.urls')),
     path("",include('chat.urls')),
+    path("",include('video_call.urls')),
     path("admin/", admin.site.urls),
 ]

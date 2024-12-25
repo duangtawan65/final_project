@@ -3,33 +3,27 @@ from django.contrib import admin
 from .models import Profile,DoctorProfile
 
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'first_name', 'last_name', 'gender', 'age', 'location')
+    # แก้ไข list_display โดยใช้ข้อมูลจาก `User` (Profile.user)
+    list_display = ('user', 'get_first_name', 'get_last_name', 'gender', 'age', 'location', 'role')
 
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
+    # เมธอดสำหรับดึง `first_name` และ `last_name` จาก `User`
+    def get_first_name(self, obj):
+        return obj.user.first_name
+    get_first_name.admin_order_field = 'user__first_name'  # ให้สามารถสั่งเรียงลำดับได้ใน Admin
+    get_first_name.short_description = 'First Name'  # ชื่อคอลัมน์ใน Admin
 
-        # Check if role is being updated to doctor
-        if 'doctor' in obj.user.groups.values_list('name', flat=True):
-            # Create a DoctorProfile if it doesn't exist
-            doctor_profile, created = DoctorProfile.objects.get_or_create(
-                user=obj.user,
-                defaults={
-                    'specialty': 'Add specialty here',
-                    'bio': 'Add bio here',
-                    'contact': obj.user.profile.location,  # Assuming location as initial contact
-                }
-            )
+    def get_last_name(self, obj):
+        return obj.user.last_name
+    get_last_name.admin_order_field = 'user__last_name'
+    get_last_name.short_description = 'Last Name'
 
-@admin.register(DoctorProfile)
+# DoctorProfileAdmin สำหรับแสดงข้อมูลใน Admin ของ DoctorProfile
 class DoctorProfileAdmin(admin.ModelAdmin):
-    list_display = ('get_user', 'specialty', 'work_location', 'session_rate')
+    list_display = ('user', 'bio', 'work_location', 'session_rate', 'service_mode', 'contact')
 
-    def get_user(self, obj):
-        return obj.profile.user.username  # Correctly access the username via profile
-
-    get_user.short_description = 'User'
 
 admin.site.register(Profile, ProfileAdmin)
+admin.site.register(DoctorProfile, DoctorProfileAdmin)
 admin.site.register(Questionnaire)
 admin.site.register(Question)
 admin.site.register(Choice)
