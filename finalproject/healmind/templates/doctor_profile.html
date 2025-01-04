@@ -1,1 +1,170 @@
-"hello"
+{% extends 'base.html' %}
+{% load static %}
+
+{% block main %}
+<div class="flex flex-col md:flex-row gap-8 p-6 bg-gradient-to-b from-[#FFF3E9] to-[#F3E5F5] min-h-screen">
+    <!-- Left Section -->
+    <div class="md:w-2/3">
+        <div class="flex items-start gap-6 mb-8">
+            <!-- Profile Image -->
+            <div class="relative">
+                <img id="profile-preview"
+                     src="{% if doctor.profile_image %}{{ doctor.profile_image.url }}{% else %}{% static 'images/default-profile.png' %}{% endif %}"
+                     alt="Doctor Profile"
+                     class="w-40 h-40 rounded-lg object-cover">
+
+                {% if request.user == doctor.user %}
+                <label class="hidden edit-mode cursor-pointer absolute bottom-2 right-2 bg-blue-500 text-white py-1 px-2 rounded-lg hover:bg-blue-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    {{ form.profile_image }}
+                </label>
+                {% endif %}
+            </div>
+
+            <!-- Basic Info -->
+            <div class="flex-1">
+                {% if request.user == doctor.user %}
+                <button onclick="toggleEditMode()" class="float-right px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 view-mode">
+                    แก้ไขโปรไฟล์
+                </button>
+                <div class="hidden edit-mode float-right space-x-2">
+                    <button onclick="saveProfile()" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">บันทึก</button>
+                    <button onclick="toggleEditMode()" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">ยกเลิก</button>
+                </div>
+                {% endif %}
+
+                <div class="view-mode">
+                    <h1 class="text-2xl font-bold mb-2 text-gray-900">{{ doctor.name }}</h1>
+                    <p class="text-gray-900 mb-2">{{ doctor.specialty }}</p>
+                    <p class="text-gray-900 mb-4">{{ doctor.work_location }}</p>
+                </div>
+
+                <div class="hidden edit-mode space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900">ชื่อ</label>
+                        {{ form.name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900">ความเชี่ยวชาญ</label>
+                        {{ form.specialty }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900">สถานที่ทำงาน</label>
+                        {{ form.work_location }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Description -->
+        <div class="bg-white rounded-lg p-6 shadow-sm mb-8 text-gray-900">
+            <div class="view-mode">
+                <!-- เปลี่ยนจาก text-white เป็น text-gray-900 -->
+                <p class="text-gray-900">{{ doctor.bio|linebreaks }}</p>
+            </div>
+            <div class="hidden edit-mode">
+                <label class="block text-sm font-medium text-gray-900 mb-2">ประวัติ/คำอธิบาย</label>
+                {{ form.bio }}
+            </div>
+        </div>
+
+        <!-- Right Section -->
+        <div class="md:w-1/3">
+            <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+                <!-- เปลี่ยนเป็น text-gray-900 -->
+                <h2 class="font-bold mb-4 text-gray-900">let's connect</h2>
+                <div class="view-mode">
+                    <div class="flex items-center gap-2 mb-4">
+                        <!-- เพิ่ม text-gray-900 -->
+                        <span class="text-gray-900">{{ doctor.contact }}</span>
+                    </div>
+                </div>
+                <div class="hidden edit-mode">
+                    <label class="block text-sm font-medium text-gray-900 mb-2">ข้อมูลการติดต่อ</label>
+                    {{ form.contact }}
+                </div>
+            </div>
+
+            <!-- Practice Information -->
+            <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+                <!-- เปลี่ยนเป็น text-gray-900 -->
+                <h2 class="font-bold mb-4 text-gray-900">การปฏิบัติโดยสรุป</h2>
+
+                <div class="view-mode">
+                    <!-- เพิ่ม text-gray-900 -->
+                    <p class="text-gray-900">{{ doctor.service_mode }}</p>
+                    <div class="border-t pt-4 mt-4">
+                        <!-- เพิ่ม text-gray-900 -->
+                        <p class="font-medium text-gray-900">${{ doctor.session_rate }} ต่อ session</p>
+                    </div>
+                </div>
+                <div class="hidden edit-mode space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900">รูปแบบการให้บริการ</label>
+                        {{ form.service_mode }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900">ค่าบริการต่อครั้ง</label>
+                        {{ form.session_rate }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEditMode() {
+    document.querySelectorAll('.view-mode').forEach(el => el.classList.toggle('hidden'));
+    document.querySelectorAll('.edit-mode').forEach(el => el.classList.toggle('hidden'));
+}
+
+function saveProfile() {
+    const form = new FormData();
+    form.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    // Append all form fields
+    const formFields = [
+        'name', 'specialty', 'bio', 'work_location',
+        'session_rate', 'service_mode', 'contact'
+    ];
+
+    formFields.forEach(field => {
+        const input = document.querySelector(`[name="${field}"]`);
+        if (input) form.append(field, input.value);
+    });
+
+    // Append profile image if changed
+    const imageInput = document.querySelector('input[type="file"]');
+    if (imageInput.files.length > 0) {
+        form.append('profile_image', imageInput.files[0]);
+    }
+
+    fetch(window.location.href, {
+        method: 'POST',
+        body: form
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+            console.error(data.errors);
+        }
+    });
+}
+
+// Preview profile image before upload
+document.querySelector('input[type="file"]')?.addEventListener('change', function(e) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        document.getElementById('profile-preview').src = event.target.result;
+    }
+    reader.readAsDataURL(e.target.files[0]);
+});
+</script>
+{% endblock %}

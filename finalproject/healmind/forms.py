@@ -1,8 +1,8 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Profile
-
+from .models import *
+from django import forms
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=100, required=True)
@@ -30,8 +30,8 @@ class CustomUserCreationForm(UserCreationForm):
                 user=user,
                 gender=self.cleaned_data['gender'],
                 age=self.cleaned_data['age'],
-                location=self.cleaned_data['location'],
-                role='member'  # Set default role
+                location=self.cleaned_data['location']
+                 # Set default role
             )
 
         return user
@@ -112,3 +112,53 @@ class ProfileForm(forms.ModelForm):
             profile.save()  # บันทึกข้อมูลใน Profile model
 
         return profile
+
+class DoctorProfileForm(forms.ModelForm):
+    class Meta:
+        model = DoctorProfile
+        fields = ['name', 'specialty', 'bio', 'work_location', 'session_rate',
+                 'service_mode', 'contact', 'profile_image']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'id': 'id_name'  # เพิ่ม id
+            }),
+            'specialty': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'id': 'id_specialty'
+            }),
+            'bio': forms.Textarea(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'rows': 4,
+                'id': 'id_bio'
+            }),
+            'work_location': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'id': 'id_work_location'
+            }),
+            'session_rate': forms.NumberInput(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'id': 'id_session_rate'
+            }),
+            'service_mode': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'id': 'id_service_mode'
+            }),
+            'contact': forms.TextInput(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'id': 'id_contact'
+            }),
+            'profile_image': forms.FileInput(attrs={
+                'class': 'hidden',
+                'id': 'id_profile_image'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # ตรวจสอบว่ามี instance หรือไม่
+        if self.instance:
+            print("Instance data:", {
+                field: getattr(self.instance, field, None)
+                for field in self.Meta.fields
+            })

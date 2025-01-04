@@ -5,7 +5,7 @@ from django.core.management.base import BaseCommand
 from healmind.models import *
 from openpyxl import load_workbook
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.contrib.auth.models import Group
 
 
 
@@ -14,19 +14,52 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         # Load the Excel data
-        file_path = os.path.join(settings.BASE_DIR,'healmind/fixtures/data1.xlsx')
+        file_path = os.path.join(settings.BASE_DIR,'healmind/fixtures/data3.1.xlsx')
         excel_data = pd.read_excel(file_path, sheet_name=None)
 
         # Load Excel workbook
         wb = load_workbook(filename=file_path)
         ws = wb.active  # สมมติว่า sheet แรกคือที่เราต้องการอ่าน
 
-        ws = wb['register']
+        member_group, created = Group.objects.get_or_create(name='member')
+        doctor_group, created = Group.objects.get_or_create(name='doctor')
+
+        ws = wb['member']
         for row in ws:
             values = [cell.value for cell in row]
             if values[0] != 'id':
                 user = User.objects.create_user(values[1], values[2], str(values[8]), pk=values[0], first_name=values[3], last_name=values[4])
-                register, created = Profile.objects.get_or_create(user=user, location=values[7],gender=values[5],age=values[6],role=values[10])
+                member, created = Profile.objects.get_or_create(user=user, location=values[7],gender=values[5],age=values[6])
+
+                user.groups.add(member_group)
+
+
+        ws_doctor = wb['doctor']
+        for row in ws_doctor:
+            values = [cell.value for cell in row]
+            if values[0] != 'id':  # Skip header row
+                password = str(values[4]) if values[4] else ''
+                # Create user account for doctor
+                user = User.objects.create_user(
+                    username=values[2],
+                    email=values[3],
+                    password=password,
+                    pk=values[0]
+                )
+
+                # Create doctor profile
+                DoctorProfile.objects.create(
+                    user=user,
+                    name=values[1],
+                    specialty=values[5],
+                    bio=values[6],
+                    session_rate=values[7],
+                    work_location=values[8],
+                    service_mode=values[9],
+                    contact=values[10],
+                )
+
+                user.groups.add(doctor_group)
 
         ws_questionnaire = wb['questionnaire']
         for row in ws_questionnaire.iter_rows(min_row=2, values_only=True):  # Skipping header row

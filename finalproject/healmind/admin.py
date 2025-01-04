@@ -4,7 +4,7 @@ from .models import Profile,DoctorProfile
 
 class ProfileAdmin(admin.ModelAdmin):
     # แก้ไข list_display โดยใช้ข้อมูลจาก `User` (Profile.user)
-    list_display = ('user', 'get_first_name', 'get_last_name', 'gender', 'age', 'location', 'role')
+    list_display = ('user', 'get_first_name', 'get_last_name', 'gender', 'age', 'location')
 
     # เมธอดสำหรับดึง `first_name` และ `last_name` จาก `User`
     def get_first_name(self, obj):

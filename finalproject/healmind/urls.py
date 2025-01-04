@@ -21,7 +21,7 @@ urlpatterns = [
 
 
     path('profile/', profile_view, name='profile'),
-    path('doctor_profile/', doctor_profile_view, name='doctor_profile'),  # สำหรับ Doctor
+    path('doctor_profile/<int:user_id>/', doctor_profile_view, name='doctor_profile'),  # สำหรับ Doctor
     path('admin_dashboard/', admin_dashboard_view, name='admin_dashboard'),
 
 

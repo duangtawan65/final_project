@@ -1,8 +1,7 @@
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.views import LogoutView
-from .forms import CustomUserCreationForm
-from .forms import ProfileForm
+from .forms import *
 from django.contrib.auth.decorators import login_required,user_passes_test
 from .models import *
 from django.contrib.auth.models import User, Group
@@ -10,6 +9,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
 from django.utils.timezone import  now, timedelta, localtime
 from django.shortcuts import render , redirect , HttpResponse,get_object_or_404
+from django.http import JsonResponse
 
 
 # Home view
@@ -18,11 +18,19 @@ def home_view(request):
     if request.user.is_staff:
         return redirect('admin_dashboard')  # Replace with your actual admin dashboard URL name
 
-    # For regular users, try to render the home page even if they don't have a profile
-    profile = getattr(request.user, 'profile', None)  # Use getattr to avoid exceptions
+    # If the user is logged in, just render the home page
+    if request.user.is_authenticated:
+        # Check if the user is in the 'member' group
+        is_member = request.user.groups.filter(name='member').exists()
+        # Check if the user is in the 'doctor' group
+        is_doctor = request.user.groups.filter(name='doctor').exists()
 
-    return render(request, 'home.html', {'profile': profile})
+        # If the user is a member or doctor, they can stay on the home page
+        # and choose where to go next
+        return render(request, 'home.html', {'is_member': is_member, 'is_doctor': is_doctor})
 
+    # If not authenticated, redirect to the login page
+    return redirect('login')  # Redirect to login page if the user is not logged in
 # Register view
 def register_view(request):
     if request.method == 'POST':
@@ -47,7 +55,7 @@ class CustomLogoutView(LogoutView):
 
 
 
-@login_required
+
 def profile_view(request):
     # ดึงข้อมูล Profile หรือสร้างใหม่ถ้าไม่มี
     profile, created = Profile.objects.get_or_create(user=request.user)
@@ -66,14 +74,30 @@ def profile_view(request):
     })
 
 
-@login_required
-def doctor_profile_view(request):
-    profile = request.user.profile
-    doctor_profile = profile.doctor_profile  # ดึงข้อมูล DoctorProfile
-    return render(request, 'doctor_profile.html', {'profile': profile, 'doctor_profile': doctor_profile})
+def doctor_profile_view(request, user_id):
+    # ดึงข้อมูลโปรไฟล์ของแพทย์จากฐานข้อมูล
+    doctor = get_object_or_404(DoctorProfile, user_id=user_id)
 
+    # สร้างฟอร์มสำหรับการแก้ไข
+    form = DoctorProfileForm(instance=doctor)
 
+    if request.method == 'POST':
+        # ตรวจสอบว่าเป็นเจ้าของโปรไฟล์
+        if request.user.id != user_id:
+            return JsonResponse({'status': 'error', 'message': 'ไม่มีสิทธิ์แก้ไขโปรไฟล์นี้'})
 
+        # สร้างฟอร์มใหม่พร้อมข้อมูลจาก POST และไฟล์ที่ถูกอัปโหลด
+        form = DoctorProfileForm(request.POST, request.FILES, instance=doctor)
+
+        if form.is_valid():
+            form.save()
+            return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'error', 'errors': form.errors})
+
+    return render(request, 'doctor_profile.html', {
+        'doctor': doctor,
+        'form': form
+    })
 
 # หน้าแรกสำหรับเลือกแบบทดสอบ
 def select_quiz_view(request):
