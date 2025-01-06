@@ -74,16 +74,16 @@ def profile_view(request):
     })
 
 
-def doctor_profile_view(request, user_id):
-    # ดึงข้อมูลโปรไฟล์ของแพทย์จากฐานข้อมูล
-    doctor = get_object_or_404(DoctorProfile, user_id=user_id)
+def doctor_profile_view(request, id):  # เปลี่ยนจาก user_id เป็น id
+    # ดึงข้อมูลโปรไฟล์ของแพทย์จากฐานข้อมูลโดยใช้ id ของ DoctorProfile
+    doctor = get_object_or_404(DoctorProfile, user_id=id)
 
     # สร้างฟอร์มสำหรับการแก้ไข
     form = DoctorProfileForm(instance=doctor)
 
     if request.method == 'POST':
         # ตรวจสอบว่าเป็นเจ้าของโปรไฟล์
-        if request.user.id != user_id:
+        if request.user != doctor.user:
             return JsonResponse({'status': 'error', 'message': 'ไม่มีสิทธิ์แก้ไขโปรไฟล์นี้'})
 
         # สร้างฟอร์มใหม่พร้อมข้อมูลจาก POST และไฟล์ที่ถูกอัปโหลด
@@ -98,6 +98,11 @@ def doctor_profile_view(request, user_id):
         'doctor': doctor,
         'form': form
     })
+
+def doctor_list(request):
+    doctors = DoctorProfile.objects.all()
+    return render(request, 'doctorlist.html', {'doctors': doctors})
+
 
 # หน้าแรกสำหรับเลือกแบบทดสอบ
 def select_quiz_view(request):

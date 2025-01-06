@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 from .views import *
 from django.conf import settings
 from django.conf.urls.static import static
+from . import views
 
 
 urlpatterns = [
@@ -21,7 +22,8 @@ urlpatterns = [
 
 
     path('profile/', profile_view, name='profile'),
-    path('doctor_profile/<int:user_id>/', doctor_profile_view, name='doctor_profile'),  # สำหรับ Doctor
+    path('doctors/', views.doctor_list, name='doctor_list'),
+    path('doctor_profile/<int:id>/', doctor_profile_view, name='doctor_profile'),
     path('admin_dashboard/', admin_dashboard_view, name='admin_dashboard'),
 
 

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block main %}
+<div class="min-h-screen bg-gradient-to-b from-[#FFF3E9] to-[#F3E5F5] p-6">
+    <div class="container mx-auto">
+        <!-- Grid Container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for doctor in doctors %}
+            <!-- Doctor Card -->
+            <div class="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <a href="{% url 'doctor_profile' id=doctor.user.id %}" class="block">
+                    <div class="p-6">
+                        <!-- Profile Image and Basic Info -->
+                        <div class="flex items-start space-x-4 mb-4">
+                            <div class="flex-shrink-0">
+                                <img src="{% if doctor.profile_image %}{{ doctor.profile_image.url }}{% else %}{% static 'images/default-profile.png' %}{% endif %}"
+                                     alt="{{ doctor.name }}"
+                                     class="w-24 h-24 rounded-lg object-cover">
+                            </div>
+                            <div class="flex-1">
+                                <h2 class="text-xl font-semibold text-gray-900 mb-1">{{ doctor.name }}</h2>
+                                <p class="text-gray-600 text-sm">{{ doctor.specialty }}</p>
+                                <p class="text-gray-600 text-sm">{{ doctor.work_location }}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Brief Bio -->
+                        <div class="mb-4">
+                            <p class="text-gray-700 text-sm line-clamp-3">{{ doctor.bio }}</p>
+                        </div>
+
+                        <!-- Rating and Sessions -->
+
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
