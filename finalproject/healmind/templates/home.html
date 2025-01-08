@@ -40,6 +40,11 @@
                         {% endif %}
                             <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full" style="height: 30px; width: 30px;">
                         </a>
+                         <!-- หน้า schedule -->
+                        {% if user.groups.all.0.name == 'member' or user.groups.all.0.name == 'doctor' %}
+                            <a href="{% url 'schedule' %}" class="hover:text-gray-600">ตารางนัดหมาย</a>
+                        {% endif %}
+
                         <!-- Logout Button -->
                         <form method="post" action="{% url 'logout' %}" class="inline-block">
                             {% csrf_token %}

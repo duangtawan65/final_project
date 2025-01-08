@@ -10,6 +10,8 @@ from django.contrib.sessions.models import Session
 from django.utils.timezone import  now, timedelta, localtime
 from django.shortcuts import render , redirect , HttpResponse,get_object_or_404
 from django.http import JsonResponse
+from datetime import datetime, timedelta
+
 
 
 # Home view
@@ -74,12 +76,15 @@ def profile_view(request):
     })
 
 
-def doctor_profile_view(request, id):  # เปลี่ยนจาก user_id เป็น id
+def doctor_profile_view(request, id):
     # ดึงข้อมูลโปรไฟล์ของแพทย์จากฐานข้อมูลโดยใช้ id ของ DoctorProfile
     doctor = get_object_or_404(DoctorProfile, user_id=id)
 
     # สร้างฟอร์มสำหรับการแก้ไข
     form = DoctorProfileForm(instance=doctor)
+
+    is_doctor = request.user.groups.filter(name='doctor').exists()
+    is_authenticated = request.user.is_authenticated
 
     if request.method == 'POST':
         # ตรวจสอบว่าเป็นเจ้าของโปรไฟล์
@@ -96,7 +101,11 @@ def doctor_profile_view(request, id):  # เปลี่ยนจาก user_id 
 
     return render(request, 'doctor_profile.html', {
         'doctor': doctor,
-        'form': form
+        'form': form,
+        'is_doctor': is_doctor,
+        'is_authenticated': is_authenticated,
+        'today': datetime.now().date(),
+        'max_date': datetime.now().date() + timedelta(days=30),
     })
 
 def doctor_list(request):
@@ -212,3 +221,70 @@ def is_user_online(user):
     return False
 
 
+def schedule_view(request):
+    # Get appointments for the logged-in user
+    if hasattr(request.user, 'doctorprofile'):
+        appointments = Appointment.objects.filter(doctor=request.user.doctorprofile)
+    else:
+        appointments = Appointment.objects.filter(member=request.user.profile)
+
+    appointments = appointments.order_by('appointment_date', 'time')
+
+    context = {
+        'appointments': appointments,
+    }
+
+    return render(request, 'schedule.html', context)
+
+
+def schedule_view(request):
+    if hasattr(request.user, 'doctorprofile'):
+        appointments = Appointment.objects.filter(doctor=request.user.doctorprofile)
+    else:
+        appointments = Appointment.objects.filter(member=request.user.profile)
+
+    appointments = appointments.order_by('appointment_date', 'time')
+
+    context = {
+        'appointments': appointments,
+    }
+    return render(request, 'schedule.html', context)
+
+
+# view สำหรับสร้างการนัดหมายใหม่
+def create_appointment(request):
+    if request.method == 'GET':
+        date = request.GET.get('date')
+        time = request.GET.get('time')
+        doctor_id = request.GET.get('doctor_id')
+
+        # เพิ่ม print เพื่อ debug
+        print(f"Received data: date={date}, time={time}, doctor_id={doctor_id}")
+
+        try:
+            appointment_date = datetime.strptime(date, '%Y-%m-%d').date()
+            appointment_time = datetime.strptime(time, '%H:%M').time()
+
+            print(f"Parsed date: {appointment_date}")
+            print(f"Parsed time: {appointment_time}")
+
+            # เช็คข้อมูลก่อนสร้าง appointment
+            print(f"User profile: {request.user.profile}")
+            print(f"Doctor id: {doctor_id}")
+
+            appointment = Appointment.objects.create(
+                doctor_id=doctor_id,
+                member=request.user.profile,
+                appointment_date=appointment_date,
+                time=appointment_time,
+                service_mode='Online'
+            )
+
+            print(f"Successfully created appointment: {appointment}")
+            return redirect('schedule')
+
+        except Exception as e:
+            print(f"Detailed error: {str(e)}")
+            return redirect('home')
+
+    return redirect('home')

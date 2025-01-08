@@ -73,3 +73,18 @@ class Result(models.Model):
     def __str__(self):
         return f'{self.stress_level} ({self.score_low}-{self.score_high})'
 
+
+class Appointment(models.Model):
+    doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='doctor_appointments')
+    member = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='member_appointments')
+    appointment_date = models.DateField()
+    time = models.TimeField()
+    service_mode = models.CharField(max_length=50, default='Online')
+    status = models.CharField(max_length=20, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['appointment_date', 'time']
+
+    def __str__(self):
+        return f"{self.member.user.username} - {self.doctor.name} - {self.appointment_date} {self.time}"

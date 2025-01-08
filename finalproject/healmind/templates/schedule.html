@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block main %}
+<div class="min-h-screen bg-gradient-to-b from-[#FFF3E9] to-[#F3E5F5] p-6">
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6 text-gray-900">ตารางนัดหมาย</h1>
+        
+        <!-- Schedule List -->
+        <div class="space-y-4">
+            {% regroup appointments by appointment_date as appointment_list %}
+            
+            {% for date in appointment_list %}
+            <div class="mb-8">
+                <!-- Date Header -->
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold text-gray-900">
+                        {{ date.grouper|date:"M d" }}
+                        <span class="text-sm font-normal">
+                            {{ date.grouper|date:"l" }}
+                        </span>
+                    </h2>
+                </div>
+
+                <!-- Appointments for this date -->
+                <div class="space-y-3">
+                    {% for appointment in date.list %}
+                    <div class="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <!-- Profile Image -->
+                                <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                                    {% if user.groups.all.0.name == 'doctor' %}
+                                        {% if appointment.member.profile_picture %}
+                                            <img src="{{ appointment.member.profile_picture.url }}"
+                                                 alt="Member Profile"
+                                                 class="w-full h-full object-cover">
+                                        {% else %}
+                                            <img src="{% static 'images/default-profile.png' %}"
+                                                 alt="Default Profile"
+                                                 class="w-full h-full object-cover">
+                                        {% endif %}
+                                    {% else %}
+                                        {% if appointment.doctor.profile_image %}
+                                            <img src="{{ appointment.doctor.profile_image.url }}"
+                                                 alt="Doctor Profile"
+                                                 class="w-full h-full object-cover">
+                                        {% else %}
+                                            <img src="{% static 'images/default-profile.png' %}"
+                                                 alt="Default Profile"
+                                                 class="w-full h-full object-cover">
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Appointment Info -->
+                                <div>
+                                    <h3 class="font-medium text-gray-900">
+                                        {% if user.groups.all.0.name == 'doctor' %}
+                                            {{ appointment.member.user.username }}
+                                        {% else %}
+                                            {{ appointment.doctor.name }}
+                                        {% endif %}
+                                    </h3>
+                                    <div class="flex items-center space-x-3 text-sm text-gray-600">
+                                        <!-- Time -->
+                                        <div class="flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            {{ appointment.time }}
+                                        </div>
+                                        <!-- Online/Offline -->
+                                        <div class="flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                            </svg>
+                                            {{ appointment.service_mode }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Menu -->
+                            <button class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-gray-500">
+                ไม่มีนัดหมาย
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

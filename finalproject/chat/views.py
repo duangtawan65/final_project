@@ -56,12 +56,6 @@ def create_room(request):
 
 
 
-def room_detail(request, room_id):
-    room = ChatRoom.objects.get(id=room_id)
-    return render(request, 'room_detail.html', {'room': room})
-
-
-
 
 @login_required
 def exit_room(request, room_id):

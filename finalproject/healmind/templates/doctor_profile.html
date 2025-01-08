@@ -6,20 +6,32 @@
     <!-- Left Section -->
     <div class="md:w-2/3">
         <div class="flex items-start gap-6 mb-8">
+
             <!-- Profile Image -->
             <div class="relative">
-                <img id="profile-preview"
-                     src="{% if doctor.profile_image %}{{ doctor.profile_image.url }}{% else %}{% static 'images/default-profile.png' %}{% endif %}"
-                     alt="Doctor Profile"
-                     class="w-40 h-40 rounded-lg object-cover">
+                <!-- Preview Container -->
+                <div class="w-40 h-40 rounded-lg overflow-hidden">
+                    <img id="profile-preview"
+                         src="{% if doctor.profile_image %}{{ doctor.profile_image.url }}{% else %}{% static 'images/default-profile.png' %}{% endif %}"
+                         alt="Doctor Profile"
+                         class="w-full h-full object-cover">
+                </div>
 
                 {% if request.user == doctor.user %}
-                <label class="hidden edit-mode cursor-pointer absolute bottom-2 right-2 bg-blue-500 text-white py-1 px-2 rounded-lg hover:bg-blue-600">
+                <label class="hidden edit-mode cursor-pointer absolute bottom-2 right-2 bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
                         <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
-                    {{ form.profile_image }}
+                    <span>เปลี่ยนรูป</span>
+                    <input
+                        type="file"
+                        name="profile_image"
+                        id="profile_image"
+                        accept="image/*"
+                        onchange="previewImage(this)"
+                        class="hidden"
+                    >
                 </label>
                 {% endif %}
             </div>
@@ -62,7 +74,6 @@
         <!-- Doctor Description -->
         <div class="bg-white rounded-lg p-6 shadow-sm mb-8 text-gray-900">
             <div class="view-mode">
-                <!-- เปลี่ยนจาก text-white เป็น text-gray-900 -->
                 <p class="text-gray-900">{{ doctor.bio|linebreaks }}</p>
             </div>
             <div class="hidden edit-mode">
@@ -70,58 +81,178 @@
                 {{ form.bio }}
             </div>
         </div>
+    </div>
 
-        <!-- Right Section -->
-        <div class="md:w-1/3">
-            <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
-                <!-- เปลี่ยนเป็น text-gray-900 -->
-                <h2 class="font-bold mb-4 text-gray-900">let's connect</h2>
-                <div class="view-mode">
-                    <div class="flex items-center gap-2 mb-4">
-                        <!-- เพิ่ม text-gray-900 -->
-                        <span class="text-gray-900">{{ doctor.contact }}</span>
-                    </div>
+    <!-- Right Section -->
+    <div class="md:w-1/3">
+        <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+            <h2 class="font-bold mb-4 text-gray-900">let's connect</h2>
+            <div class="view-mode">
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="text-gray-900">{{ doctor.contact }}</span>
                 </div>
-                <div class="hidden edit-mode">
-                    <label class="block text-sm font-medium text-gray-900 mb-2">ข้อมูลการติดต่อ</label>
-                    {{ form.contact }}
+            </div>
+            <div class="hidden edit-mode">
+                <label class="block text-sm font-medium text-gray-900 mb-2">ข้อมูลการติดต่อ</label>
+                {{ form.contact }}
+            </div>
+        </div>
+
+        <!-- Practice Information -->
+        <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+            <h2 class="font-bold mb-4 text-gray-900">การปฏิบัติโดยสรุป</h2>
+
+            <div class="view-mode">
+                <p class="text-gray-900">{{ doctor.service_mode }}</p>
+                <div class="border-t pt-4 mt-4">
+                    <p class="font-medium text-gray-900">${{ doctor.session_rate }} ต่อ session</p>
                 </div>
             </div>
 
-            <!-- Practice Information -->
-            <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
-                <!-- เปลี่ยนเป็น text-gray-900 -->
-                <h2 class="font-bold mb-4 text-gray-900">การปฏิบัติโดยสรุป</h2>
-
-                <div class="view-mode">
-                    <!-- เพิ่ม text-gray-900 -->
-                    <p class="text-gray-900">{{ doctor.service_mode }}</p>
-                    <div class="border-t pt-4 mt-4">
-                        <!-- เพิ่ม text-gray-900 -->
-                        <p class="font-medium text-gray-900">${{ doctor.session_rate }} ต่อ session</p>
-                    </div>
+            <div class="hidden edit-mode space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-900">รูปแบบการให้บริการ</label>
+                    {{ form.service_mode }}
                 </div>
-                <div class="hidden edit-mode space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-900">รูปแบบการให้บริการ</label>
-                        {{ form.service_mode }}
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-900">ค่าบริการต่อครั้ง</label>
-                        {{ form.session_rate }}
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-900">ค่าบริการต่อครั้ง</label>
+                    {{ form.session_rate }}
                 </div>
             </div>
         </div>
+
+        {% if is_authenticated and not is_doctor %}
+        <!-- Button to Open Consultation Modal -->
+        <div class="fixed bottom-8 left-0 right-0 flex justify-center w-full">
+            <button onclick="showConsultModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-full shadow-lg transform transition-transform hover:scale-105 text-lg font-medium">
+                เข้ารับปรึกษา
+            </button>
+        </div>
+
+        <!-- Modal for Selecting Date and Time -->
+        <div id="consultModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <!-- Date Selection -->
+                <div class="mb-4">
+                    <h3 class="text-lg text-black font-medium">เลือกวันที่</h3>
+                    <input
+                        type="date"
+                        id="consultationDate"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
+                        min="{{ today|date:'Y-m-d' }}"
+                        max="{{ max_date|date:'Y-m-d' }}"
+                        required
+                    >
+                </div>
+
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-black">เลือกเวลาที่ต้องการปรึกษา</h3>
+                </div>
+
+                <!-- Hour Selection -->
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    {% with ''|center:14 as range %}
+                    {% for _ in range %}
+                        {% with forloop.counter|add:8 as hour %}
+                        <button
+                            onclick="selectTime('{{ hour }}:00')"
+                            class="time-slot py-2 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                        >
+                            {{ hour }}:00
+                        </button>
+                        {% endwith %}
+                    {% endfor %}
+                    {% endwith %}
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button onclick="hideConsultModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-900">ยกเลิก</button>
+                    <button onclick="submitConsultation()" id="confirmButton" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300" disabled>ยืนยัน</button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
 <script>
+let selectedDate = null;
+let selectedTime = null;
+
+function showConsultModal() {
+    document.getElementById('consultModal').classList.remove('hidden');
+    // Reset selections when opening modal
+    selectedDate = null;
+    selectedTime = null;
+    document.getElementById('confirmButton').disabled = true;
+}
+
+function hideConsultModal() {
+    document.getElementById('consultModal').classList.add('hidden');
+}
+
+// เพิ่ม event listener สำหรับการเลือกวันที่
+document.getElementById('consultationDate').addEventListener('change', function(e) {
+    selectedDate = e.target.value;
+    console.log("Selected Date:", selectedDate);
+    validateSelections();
+});
+
+function selectTime(time) {
+    selectedTime = time;
+    document.querySelectorAll('.time-slot').forEach(button => {
+        if (button.textContent.trim() === time) {
+            button.classList.add('bg-blue-500', 'text-white');
+            button.classList.remove('hover:bg-gray-50');
+        } else {
+            button.classList.remove('bg-blue-500', 'text-white');
+            button.classList.add('hover:bg-gray-50');
+        }
+    });
+    validateSelections();
+}
+
+// เพิ่มฟังก์ชันตรวจสอบการเลือกทั้งวันที่และเวลา
+function validateSelections() {
+    const confirmButton = document.getElementById('confirmButton');
+    if (selectedDate && selectedTime) {
+        confirmButton.disabled = false;
+    } else {
+        confirmButton.disabled = true;
+    }
+}
+
+function submitConsultation() {
+    if (selectedDate && selectedTime) {
+        window.location.href = `/create-appointment/?time=${selectedTime}&date=${selectedDate}&doctor_id={{ doctor.id }}`;
+    } else {
+        alert("กรุณาเลือกวันที่และเวลา");
+    }
+}
+// Close modal when clicking outside
+document.getElementById('consultModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideConsultModal();
+    }
+});
 function toggleEditMode() {
     document.querySelectorAll('.view-mode').forEach(el => el.classList.toggle('hidden'));
     document.querySelectorAll('.edit-mode').forEach(el => el.classList.toggle('hidden'));
 }
+function previewImage(input) {
+    console.log('Preview Image Function Called');
+    if (input.files && input.files[0]) {
+        console.log('File selected:', input.files[0]);
+        const reader = new FileReader();
 
+        reader.onload = function(e) {
+            console.log('File loaded:', e.target.result);
+            document.getElementById('profile-preview').src = e.target.result;
+        }
+
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 function saveProfile() {
     const form = new FormData();
     form.append('csrfmiddlewaretoken', '{{ csrf_token }}');
@@ -139,9 +270,15 @@ function saveProfile() {
 
     // Append profile image if changed
     const imageInput = document.querySelector('input[type="file"]');
-    if (imageInput.files.length > 0) {
+    if (imageInput && imageInput.files.length > 0) {
         form.append('profile_image', imageInput.files[0]);
     }
+
+    // แสดง loading state
+    const saveButton = document.querySelector('button[onclick="saveProfile()"]');
+    const originalText = saveButton.textContent;
+    saveButton.textContent = 'กำลังบันทึก...';
+    saveButton.disabled = true;
 
     fetch(window.location.href, {
         method: 'POST',
@@ -154,17 +291,19 @@ function saveProfile() {
         } else {
             alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
             console.error(data.errors);
+            // Reset button state
+            saveButton.textContent = originalText;
+            saveButton.disabled = false;
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+        // Reset button state
+        saveButton.textContent = originalText;
+        saveButton.disabled = false;
     });
 }
-
-// Preview profile image before upload
-document.querySelector('input[type="file"]')?.addEventListener('change', function(e) {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        document.getElementById('profile-preview').src = event.target.result;
-    }
-    reader.readAsDataURL(e.target.files[0]);
-});
 </script>
+
 {% endblock %}
