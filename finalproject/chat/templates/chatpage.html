@@ -1,98 +1,136 @@
 {% extends 'base.html' %}
 
 {% block main %}
-  <body>
-    <center><h1>Hello, Welcome to my chat site! {{request.user}}</h1></center>
-    <br>
+<div class="container mx-auto p-4">
+    <div class="max-w-3xl mx-auto">
+        <!-- Header with Appointment Info -->
+        <div class="bg-white rounded-lg p-4 mb-4 shadow text-black">
+            <h2 class="text-xl font-bold">
+                Chat Session:
+                {% if request.user == room.doctor %}
+                    {{ room.member.username }}
+                {% else %}
+                    Dr. {{ room.doctor.username }}
+                {% endif %}
+            </h2>
+            <p class="text-gray-900">
+                Appointment Time: {{ room.appointment.time }}
+            </p>
+        </div>
+         <!-- สถานะการเชื่อมต่อ -->
+        <div id="chat-status" class="text-center py-2 font-medium text-yellow-500">
+            กำลังเชื่อมต่อ...
+        </div>
 
+        <!-- Chat Container -->
+        <div id="id_chat_item_container"
+             class="bg-white rounded-lg p-4 shadow mb-4 h-[400px] overflow-y-auto">
+        </div>
 
-    <!-- Chat Container -->
-    <div id="id_chat_item_container" style="border: 2px solid #ccc; padding: 10px; width: 400px; height: 300px; overflow-y: scroll;">
-        <!-- ข้อความแชททั้งหมดจะแสดงที่นี่ -->
+        <!-- Message Input Section -->
+        <div class="flex gap-2">
+            <input type="text"
+                   id="id_message_send_input"
+                   class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                   placeholder="Type your message..." />
+            <button id="id_message_send_button"
+                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                Send
+            </button>
+        </div>
+
+        <!-- Exit Button -->
+        <div class="mt-4 text-center">
+            <form method="POST" action="{% url 'chat:end_chat' room.appointment.id %}">
+                {% csrf_token %}
+                <button type="submit"
+                        class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+                    End Chat
+                </button>
+            </form>
+        </div>
     </div>
+</div>
 
-    <!-- Message Input Section -->
-    <div style="display: flex; margin-top: 10px; ">
-      <input type="text" id="id_message_send_input" style="width: 80%; padding: 10px; margin-right: 10px; border: 1px solid #ccc; border-radius: 5px; color:black" />
-      <button type="submit" id="id_message_send_button" style="padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
-        Send Message
-      </button>
-    </div>
+<script>
+    // Connect to the specific room
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host +
+        '/ws/chat/{{ room.appointment.id }}/'
+    );
 
+    chatSocket.onopen = function(e) {
+        console.log("Connected to chat room!");
+    };
 
-    <!-- Exit Room Button -->
-    <form method="POST" action="{% url 'chat:exit_room' room.id %}">
-      {% csrf_token %}
-      <button type="submit" class="px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600">
-        Exit Room
-      </button>
-    </form>
+    chatSocket.onclose = function(e) {
+        console.log("Disconnected from chat room");
+    };
 
+    // Send message functionality
+    document.querySelector("#id_message_send_button").onclick = function(e) {
+        const messageInput = document.querySelector("#id_message_send_input");
+        const message = messageInput.value;
 
-    <script>
-      const chatSocket = new WebSocket("ws://" + window.location.host + "/");
-
-      chatSocket.onopen = function (e) {
-        console.log("The connection was setup successfully!");
-      };
-
-      chatSocket.onclose = function (e) {
-        console.log("Something unexpected happened!");
-      };
-
-      document.querySelector("#id_message_send_input").focus();
-      document.querySelector("#id_message_send_input").onkeyup = function (e) {
-        if (e.keyCode == 13) { // กด Enter เพื่อส่งข้อความ
-          document.querySelector("#id_message_send_button").click();
+        if (message) {
+            chatSocket.send(JSON.stringify({
+                'message': message,
+                'username': "{{ request.user.username }}",
+                'room_id': "{{ room.appointment.id }}"
+            }));
+            messageInput.value = '';
         }
-      };
+    };
 
-      document.querySelector("#id_message_send_button").onclick = function (e) {
-        var messageInput = document.querySelector("#id_message_send_input").value;
-        chatSocket.send(JSON.stringify({ message: messageInput, username: "{{request.user.username}}" }));
-      };
+    // Enter key to send
+    document.querySelector("#id_message_send_input").onkeyup = function(e) {
+        if (e.keyCode === 13) {  // Enter key
+            document.querySelector("#id_message_send_button").click();
+        }
+    };
 
-      chatSocket.onmessage = function (e) {
-        const data = JSON.parse(e.data);
-        var div = document.createElement("div");
+    // Receive message
+  chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
 
-        // Check if the message is from the current user or the other person
-        if (data.username === "{{request.user.username}}") {
-          // Add CSS class for current user (align right)
-          div.classList.add('chat-message', 'chat-end');
-          div.innerHTML = `<div class="bg-blue-500 text-white p-2 rounded-lg">${data.username}: ${data.message}</div>`;
+    if (data.type === 'status') {
+        // จัดการสถานะห้องแชท
+        const chatStatus = document.getElementById('chat-status');
+        if (data.users_count < 2) {
+            chatStatus.textContent = "กำลังรอผู้ใช้อีกคน...";
+            chatStatus.classList.add('text-yellow-500');
+            document.getElementById('id_message_send_button').disabled = true;
+            document.getElementById('id_message_send_input').disabled = true;
         } else {
-          // Add CSS class for the other person (align left)
-          div.classList.add('chat-message', 'chat-start');
-          div.innerHTML = `<div class="bg-gray-300 text-black p-2 rounded-lg">${data.username}: ${data.message}</div>`;
+            chatStatus.textContent = "เริ่มแชทได้";
+            chatStatus.classList.remove('text-yellow-500');
+            chatStatus.classList.add('text-green-500');
+            document.getElementById('id_message_send_button').disabled = false;
+            document.getElementById('id_message_send_input').disabled = false;
         }
+    } else {
+        // แสดงข้อความแชท
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('mb-2');
 
-        document.querySelector("#id_message_send_input").value = "";
-        document.querySelector("#id_chat_item_container").appendChild(div);
+        // เช็คว่าเป็นข้อความของเราหรือไม่
+        const isOwnMessage = data.username === "{{ request.user.username }}";
 
-        // Auto scroll to the latest message
-        const chatContainer = document.querySelector("#id_chat_item_container");
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-      };
-    </script>
+        messageDiv.innerHTML = `
+            <div class="flex ${isOwnMessage ? 'justify-end' : 'justify-start'}">
+                <div class="${isOwnMessage ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'} rounded-lg px-4 py-2 max-w-[70%]">
+                    <div class="text-sm opacity-75">${data.username}</div>
+                    <div>${data.message}</div>
+                </div>
+            </div>
+        `;
 
-    <style>
-      .chat-message {
-        margin: 10px 0;
-        max-width: 80%;
-        word-wrap: break-word;
-      }
+        document.querySelector("#id_chat_item_container").appendChild(messageDiv);
 
-      .chat-end {
-        align-self: flex-end;
-        text-align: right;
-      }
-
-      .chat-start {
-        align-self: flex-start;
-        text-align: left;
-      }
-    </style>
-  </body>
-</html>
+        // เลื่อนไปที่ข้อความล่าสุด
+        const container = document.querySelector("#id_chat_item_container");
+        container.scrollTop = container.scrollHeight;
+    }
+};
+</script>
 {% endblock %}

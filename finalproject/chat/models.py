@@ -1,42 +1,32 @@
 from django.db import models
-import random
 from django.contrib.auth.models import User
+from healmind.models import Appointment
 # Create your models here.
-class Room(models.Model):
-    name = models.CharField(max_length=255, unique=True)
 
 
 
 
 class ChatRoom(models.Model):
-    name = models.CharField(max_length=255)  # ชื่อห้อง
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_rooms')  # เจ้าของห้อง
-    user1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chatroom_user1', null=True, blank=True)  # ผู้ใช้คนที่ 1
-    user2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chatroom_user2', null=True, blank=True)  # ผู้ใช้คนที่ 2
-    status = models.CharField(max_length=20, choices=[('open', 'Open'), ('closed', 'Closed')], default='open')  # สถานะห้อง
+    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name='chat_room')
+    member = models.ForeignKey(User, on_delete=models.CASCADE, related_name='member_chats')
+    doctor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='doctor_chats')
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[('active', 'Active'), ('ended', 'Ended')],
+        default='active'
+    )
 
     def __str__(self):
-        return f"{self.name}"
+        return f"Chat: {self.member.username} - {self.doctor.username}"
 
-    def is_full(self):
-        # ตรวจสอบว่าห้องเต็มหรือไม่
-        return self.user1 is not None and self.user2 is not None
     def has_participants(self):
-        """ เช็คว่ามีผู้ใช้ในห้องหรือไม่ """
-        return self.user1 is not None or self.user2 is not None
+        """เช็คว่ามีทั้ง member และ doctor ในห้องไหม"""
+        return self.member is not None and self.doctor is not None
 
-    def remove_user(self, user):
-        """ ฟังก์ชันที่จะลบผู้ใช้ออกจากห้อง """
-        if self.user1 == user:
-            self.user1 = None
-        elif self.user2 == user:
-            self.user2 = None
+    def end_chat(self):
+        """จบการแชทและเปลี่ยนสถานะ"""
+        self.status = 'ended'
         self.save()
-
-    def delete_if_empty(self):
-        """ หากห้องไม่มีผู้ใช้ จะลบห้องนี้ """
-        if not self.has_participants():
-            self.delete()
-
 
 

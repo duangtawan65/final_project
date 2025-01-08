@@ -62,7 +62,7 @@
                                             {{ appointment.doctor.name }}
                                         {% endif %}
                                     </h3>
-                                    <div class="flex items-center space-x-3 text-sm text-gray-600">
+                                    <div class="flex items-center space-x-3 text-sm text-gray-900">
                                         <!-- Time -->
                                         <div class="flex items-center">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,10 +79,29 @@
                                             </svg>
                                             {{ appointment.service_mode }}
                                         </div>
+                                        <!-- Appointment Status -->
+                                        <div id="status-{{ appointment.id }}" class="text-sm">
+                                            <span class="px-2 py-1 rounded-full text-xs
+                                                         {% if is_appointment_active %}
+                                                             bg-green-100 text-green-800
+                                                         {% else %}
+                                                             bg-gray-100 text-gray-800
+                                                         {% endif %}">
+                                                <span id="status-text-{{ appointment.id }}">
+                                                    กำลังรอเวลานัด
+                                                </span>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            
+                            <!-- Chat Button -->
+                            <button
+                                id="chat-btn-{{ appointment.id }}"
+                                onclick="window.location.href='{% url 'chat:chat_room' appointment.id %}'"
+                                class="hidden px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 mr-2">
+                                เข้าสู่ห้องแชท
+                            </button>
                             <!-- Action Menu -->
                             <button class="text-gray-400 hover:text-gray-600">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,4 +122,39 @@
         </div>
     </div>
 </div>
+
+<script>
+function checkAppointmentTime() {
+    {% for date in appointment_list %}
+        {% for appointment in date.list %}
+            const appointmentTime = new Date("{{ appointment.appointment_date|date:'Y-m-d' }}T{{ appointment.time|time:'H:i' }}");
+            const now = new Date();
+            const statusElement = document.getElementById('status-text-{{ appointment.id }}');
+            const chatButton = document.getElementById('chat-btn-{{ appointment.id }}');
+
+            // ตรวจสอบว่าอยู่ในช่วงเวลานัดหรือไม่ (1 ชั่วโมง)
+            if (now >= appointmentTime && now <= new Date(appointmentTime.getTime() + 60*60*1000)) {
+                chatButton.classList.remove('hidden');
+                statusElement.textContent = "กำลังให้คำปรึกษา";
+                statusElement.parentElement.classList.remove('bg-gray-100', 'text-gray-800');
+                statusElement.parentElement.classList.add('bg-green-100', 'text-green-800');
+            } else if (now < appointmentTime) {
+                chatButton.classList.add('hidden');
+                statusElement.textContent = "กำลังรอเวลานัด";
+                statusElement.parentElement.classList.remove('bg-green-100', 'text-green-800');
+                statusElement.parentElement.classList.add('bg-gray-100', 'text-gray-800');
+            } else {
+                chatButton.classList.add('hidden');
+                statusElement.textContent = "เสร็จสิ้นการปรึกษา";
+                statusElement.parentElement.classList.remove('bg-green-100', 'text-green-800');
+                statusElement.parentElement.classList.add('bg-gray-100', 'text-gray-800');
+            }
+        {% endfor %}
+    {% endfor %}
+}
+
+// เช็คทุกๆ 1 นาที
+checkAppointmentTime();
+setInterval(checkAppointmentTime, 60000);
+</script>
 {% endblock %}

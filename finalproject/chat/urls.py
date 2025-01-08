@@ -5,10 +5,8 @@ from django.contrib.auth.views import LoginView, LogoutView
 app_name = 'chat'
 
 urlpatterns = [
-    path('create/', views.create_room, name='create_room'),
-    path('rooms/', views.room_list, name='room_list'),
-    path('chat/<int:room_id>/', views.chatPage, name='chat_page'),
-    path('exit_room/<int:room_id>/', views.exit_room, name='exit_room'),
+    path('chat/<int:appointment_id>/', views.chatPage, name='chat_room'),
+    path('chat/<int:appointment_id>/end/', views.end_chat, name='end_chat'),
 
 
 ]
