@@ -92,8 +92,13 @@ DATABASES = {
         'PASSWORD': '1234',
         'HOST': 'localhost',
         'PORT': '5432',
-    }
+    },
+    'sqlite_db': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',  # SQLite ใช้สำหรับเก็บข้อมูลบางอย่าง
+    },
 }
+
 
 
 # Password validation
