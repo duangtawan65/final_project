@@ -87,11 +87,11 @@ ASGI_APPLICATION = "finalproject.asgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'healminddb',       # ชื่อฐานข้อมูลที่คุณต้องการใช้
-        'USER': 'postgres',         # ใช้ชื่อผู้ใช้เป็น 'postgres'
-        'PASSWORD': '1234',         # รหัสผ่านของผู้ใช้ 'postgres'
-        'HOST': 'localhost',        # หรือที่อยู่ IP ของ PostgreSQL server
-        'PORT': '5432',             # พอร์ตของ PostgreSQL (ค่าเริ่มต้นคือ 5432)
+        'NAME': 'healminddb',
+        'USER': 'postgres',
+        'PASSWORD': '1234',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
