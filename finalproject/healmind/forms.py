@@ -114,15 +114,37 @@ class ProfileForm(forms.ModelForm):
         return profile
 
 class DoctorProfileForm(forms.ModelForm):
+
+    # เพิ่ม fields สำหรับ User model
+    first_name = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={
+        'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+        'id': 'id_first_name'
+    }))
+    last_name = forms.CharField(max_length=150, required=True, widget=forms.TextInput(attrs={
+        'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+        'id': 'id_last_name'
+    }))
+
     class Meta:
         model = DoctorProfile
-        fields = ['name', 'specialty', 'bio', 'work_location', 'session_rate',
-                 'service_mode', 'contact', 'profile_image']
+        fields = ['title',  'specialty', 'bio','work_location', 'session_rate', 'service_mode', 'contact','profile_image']
         widgets = {
-            'name': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
-                'id': 'id_name'  # เพิ่ม id
-            }),
+                'title': forms.Select(
+                    choices=[
+                        ('', 'เลือกคำนำหน้า'),
+                        ('นพ.', 'นายแพทย์'),
+                        ('พญ.', 'แพทย์หญิง'),
+                        ('ผศ.นพ.', 'ผู้ช่วยศาสตราจารย์นายแพทย์'),
+                        ('ผศ.พญ.', 'ผู้ช่วยศาสตราจารย์แพทย์หญิง'),
+                        ('รศ.นพ.', 'รองศาสตราจารย์นายแพทย์'),
+                        ('รศ.พญ.', 'รองศาสตราจารย์แพทย์หญิง'),
+                        ('ศ.นพ.', 'ศาสตราจารย์นายแพทย์'),
+                        ('ศ.พญ.', 'ศาสตราจารย์แพทย์หญิง'),
+                    ],
+                    attrs={
+                        'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                    }
+                ),
             'specialty': forms.TextInput(attrs={
                 'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
                 'id': 'id_specialty'
@@ -156,9 +178,18 @@ class DoctorProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # ตรวจสอบว่ามี instance หรือไม่
-        if self.instance:
-            print("Instance data:", {
-                field: getattr(self.instance, field, None)
-                for field in self.Meta.fields
-            })
+        if self.instance and self.instance.user_id:
+            # ใส่ค่าเริ่มต้นจาก User model
+            self.fields['first_name'].initial = self.instance.user.first_name
+            self.fields['last_name'].initial = self.instance.user.last_name
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            # บันทึกข้อมูลใน User model
+            user = instance.user
+            user.first_name = self.cleaned_data['first_name']
+            user.last_name = self.cleaned_data['last_name']
+            user.save()
+            instance.save()
+        return instance

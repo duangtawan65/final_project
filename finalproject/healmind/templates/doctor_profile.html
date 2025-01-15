@@ -49,15 +49,25 @@
                 {% endif %}
 
                 <div class="view-mode">
-                    <h1 class="text-2xl font-bold mb-2 text-gray-900">{{ doctor.name }}</h1>
+                    <h1 class="text-2xl font-bold mb-2 text-gray-900">
+                        {{ doctor.title }} {{ doctor.user.first_name }} {{ doctor.user.last_name }}
+                    </h1>
                     <p class="text-gray-900 mb-2">{{ doctor.specialty }}</p>
                     <p class="text-gray-900 mb-4">{{ doctor.work_location }}</p>
                 </div>
 
                 <div class="hidden edit-mode space-y-4">
+                     <div>
+                        <label class="block text-sm font-medium text-gray-900">คำนำหน้า</label>
+                        {{ form.title }}
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-900">ชื่อ</label>
-                        {{ form.name }}
+                        {{ form.first_name }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-900">นามสกุล</label>
+                        {{ form.last_name }}
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-900">ความเชี่ยวชาญ</label>
@@ -259,8 +269,8 @@ function saveProfile() {
 
     // Append all form fields
     const formFields = [
-        'name', 'specialty', 'bio', 'work_location',
-        'session_rate', 'service_mode', 'contact'
+        'title', 'first_name', 'last_name', 'specialty', 'bio',
+        'work_location', 'session_rate', 'service_mode', 'contact'
     ];
 
     formFields.forEach(field => {
@@ -274,12 +284,6 @@ function saveProfile() {
         form.append('profile_image', imageInput.files[0]);
     }
 
-    // แสดง loading state
-    const saveButton = document.querySelector('button[onclick="saveProfile()"]');
-    const originalText = saveButton.textContent;
-    saveButton.textContent = 'กำลังบันทึก...';
-    saveButton.disabled = true;
-
     fetch(window.location.href, {
         method: 'POST',
         body: form
@@ -291,17 +295,7 @@ function saveProfile() {
         } else {
             alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
             console.error(data.errors);
-            // Reset button state
-            saveButton.textContent = originalText;
-            saveButton.disabled = false;
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
-        // Reset button state
-        saveButton.textContent = originalText;
-        saveButton.disabled = false;
     });
 }
 </script>

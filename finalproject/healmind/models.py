@@ -20,7 +20,7 @@ class Profile(models.Model):
 
 class DoctorProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    name = models.CharField(max_length=255, blank=True)
+    title = models.CharField(max_length=10,  blank=True)
     specialty = models.CharField(max_length=255, blank=True)
     bio = models.TextField(blank=True)
     work_location = models.CharField(max_length=255, blank=True)
