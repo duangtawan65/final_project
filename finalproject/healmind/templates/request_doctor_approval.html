@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="max-w-4xl mx-auto p-6">
+    <form method="POST" enctype="multipart/form-data" class="space-y-8">
+        {% csrf_token %}
+
+        <!-- ข้อมูลส่วนบุคคล -->
+        <div class="space-y-6">
+            <h2 class="text-xl font-semibold border-b pb-2 text-gray-900">ข้อมูลส่วนบุคคล</h2>
+
+            <!-- คำนำหน้า -->
+            <div class="flex gap-6">
+                {{ form.title }}
+            </div>
+
+            <!-- ชื่อ-นามสกุล -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    {{ form.first_name }}
+                </div>
+                <div>
+                    {{ form.last_name }}
+                </div>
+            </div>
+
+            <!-- สถานที่ทำงานปัจจุบัน -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    {{ form.work_location }}
+                </div>
+                <div>
+                    {{ form.email }}
+                </div>
+            </div>
+        </div>
+
+        <!-- ที่อยู่ปัจจุบันหรือที่อยู่ที่ติดต่อได้ -->
+        <div class="space-y-6">
+            <h2 class="text-xl font-semibold border-b pb-2 text-gray-900">ที่อยู่ปัจจุบัน/ที่อยู่ที่ติดต่อได้</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    {{ form.address }}
+                </div>
+                <div>
+                    {{ form.district }}
+                </div>
+                <div>
+                    {{ form.province }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    {{ form.postal_code }}
+                </div>
+                <div>
+                    {{ form.phone }}
+                </div>
+            </div>
+        </div>
+
+        <!-- อัพโหลดเอกสาร -->
+        <div class="space-y-6">
+            <h2 class="text-xl font-semibold border-b pb-2 text-gray-900">อัพโหลดเอกสาร</h2>
+
+            <div class="space-y-4">
+                <p class="text-sm text-red-500">อัพโหลดเอกสารการเป็นแพทย์ ใบรับรองมาตรฐาน</p>
+                {{ form.document }}
+            </div>
+
+            <!-- Optional note field -->
+            <div>
+                {{ form.note }}
+            </div>
+        </div>
+
+        <!-- ปุ่มบันทึก -->
+        <div class="flex justify-center ">
+            <button type="submit" class="px-8 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-gray-900">
+                บันทึกข้อมูล
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

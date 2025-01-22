@@ -32,20 +32,32 @@
             <nav class="space-x-4 flex items-center">
                 <a href="{% url 'home' %}" class="hover:text-gray-600">Home</a>
                 <a href="#" class="hover:text-gray-600">About</a>
+                <a href="{% url 'test_history' %}" class="hover:text-gray-600">ประวัติการทำแบบทดสอบ</a>
 
                 {% if user.is_authenticated %}
                     <!-- Profile Icon and Username -->
-                    <div class="flex items-center space-x-10    ">
-                        <a href="{% url 'profile' %}" class="flex items-center space-x-2">
-                            <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full" style="height: 30px; width: 30px;">
+
+                    <div class="flex items-center space-x-10">
+                        {% if user.groups.all.0.name == 'doctor' %}
+                            <a href="{% url 'doctor_profile' id=user.id %}" class="flex items-center space-x-2">
+                        {% else %}
+                            <a href="{% url 'profile' %}" class="flex items-center space-x-2">
+                        {% endif %}
+                            <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full " style="height: 30px; width: 30px;">
                         </a>
 
-                    <!-- ตรวจสอบ group และเพิ่มลิงก์ schedule -->
-                    {% if user.groups.all.0.name == 'member' or user.groups.all.0.name == 'doctor' %}
-                        <a href="{% url 'schedule' %}" class="hover:text-gray-600">ตารางนัดหมาย</a>
-                    {% endif %}
+                        <div class="flex space-x-4">
+                            {% if user.groups.all.0.name == 'member' or user.groups.all.0.name == 'doctor' %}
+                                <a href="{% url 'schedule' %}" class="hover:text-gray-600 hover:text-blue-700">ตารางนัดหมาย</a>
+                            {% endif %}
 
-                        <!-- Logout Button -->
+                            {% if user.groups.all.0.name == 'member' %}
+                                <a href="{% url 'request_doctor' %}" class="text-gray-600 hover:text-blue-700">ขอสิทธิ์เป็นแพทย์</a>
+                            {% endif %}
+
+
+                        </div>
+
                         <form method="post" action="{% url 'logout' %}" class="inline-block">
                             {% csrf_token %}
                             <button type="submit" class="hover:text-gray-600">Logout</button>

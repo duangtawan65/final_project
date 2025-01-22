@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="min-h-screen bg-gradient-to-b from-[#FFF3E9] to-[#F3E5F5] p-6">
+    <div class="max-w-5xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6 text-gray-900">ประวัติการแชท</h1>
+        
+        <div class="space-y-4">
+            {% for history in histories %}
+            <div class="bg-white rounded-lg p-4 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-medium text-gray-900">
+                            {% if is_doctor %}
+                                คุย กับ: {{ history.member.username }}
+                            {% else %}
+                                คุย กับ: {{ history.doctor.username }}
+                            {% endif %}
+                        </h3>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <p>วันที่: {{ history.appointment.appointment_date|date:"d/m/Y" }}</p>
+                            <p>เวลาเริ่ม: {{ history.chat_start_time|time:"H:i" }}</p>
+                            <p>เวลาจบ: {{ history.chat_end_time|time:"H:i" }}</p>
+                        </div>
+                        <div class="flex justify-between items-start">
+                            <!-- ... ข้อมูลอื่นๆ ... -->
+                            {% if not is_doctor and not history.rating %}
+                                <button onclick="openReviewModal('{{ history.id }}')"
+                                        class="ml-4 px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                                    ให้คะแนน
+                                </button>
+                            {% elif history.rating %}
+                                <div class="text-yellow-500">{{ history.stars }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 text-sm rounded-full 
+                        {% if history.status == 'completed' %}
+                            bg-green-100 text-green-800
+                        {% elif history.status == 'cancelled' %}
+                            bg-red-100 text-red-800
+                        {% else %}
+                            bg-yellow-100 text-yellow-800
+                        {% endif %}">
+                        {{ history.status }}
+                    </span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-gray-500">
+                ไม่มีประวัติการแชท
+            </div>
+            {% endfor %}
+
+
+
+            <div id="reviewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white rounded-lg p-6 w-96">
+                    <h2 class="text-xl font-bold mb-4 text-gray-900">ให้คะแนนแพทย์</h2>
+                    <form id="reviewForm" method="POST" action="{% url 'chat:submit_review' %}">
+                        {% csrf_token %}
+                        <input type="hidden" id="historyId" name="history_id">
+                        <div class="flex justify-center space-x-2 text-2xl mb-4">
+                            <button type="button" class="star-btn text-gray-900 " data-rating="1">☆</button>
+                            <button type="button" class="star-btn text-gray-900" data-rating="2">☆</button>
+                            <button type="button" class="star-btn text-gray-900" data-rating="3">☆</button>
+                            <button type="button" class="star-btn text-gray-900" data-rating="4">☆</button>
+                            <button type="button" class="star-btn text-gray-900" data-rating="5">☆</button>
+                        </div>
+                        <input type="hidden" id="rating" name="rating" required>
+                        <div class="flex justify-end space-x-2">
+                            <button type="button" onclick="closeReviewModal()"
+                                    class="px-4 py-2 border rounded-lg hover:bg-gray-100 text-gray-900">
+                                ยกเลิก
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                                บันทึก
+                            </button>
+                        </div>
+                    </form>
+                </div>
+        </div>
+    </div>
+</div>
+<script>
+function openReviewModal(historyId) {
+    document.getElementById('historyId').value = historyId;
+    document.getElementById('reviewModal').classList.remove('hidden');
+}
+
+function closeReviewModal() {
+    document.getElementById('reviewModal').classList.add('hidden');
+}
+
+// Star rating functionality
+document.querySelectorAll('.star-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const rating = this.dataset.rating;
+        document.getElementById('rating').value = rating;
+
+        // Update stars visual
+        document.querySelectorAll('.star-btn').forEach((star, index) => {
+            star.textContent = index < rating ? '★' : '☆';
+        });
+    });
+});
+
+// Close modal when clicking outside
+document.getElementById('reviewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeReviewModal();
+    }
+});
+
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    fetch(this.action, {
+        method: 'POST',
+        body: new FormData(this),
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        }
+    });
+});
+</script>
+{% endblock %}

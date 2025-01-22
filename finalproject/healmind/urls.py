@@ -30,10 +30,17 @@ urlpatterns = [
     path('create-appointment/', views.create_appointment, name='create_appointment'),
 
 
+    path('request-doctor/', views.request_doctor_approval, name='request_doctor'),
+    path('admin/doctor-requests/', views.doctor_approval_list, name='doctor_requests_list'),
+    path('admin/doctor-requests/<int:request_id>/approve/', views.handle_doctor_approval, name='handle_doctor_approval'),
+    path('admin/doctor-requests/<int:request_id>/', views.doctor_request_detail, name='doctor_request_detail'),
+
+
 
     path('questionnaire/', select_quiz_view, name='select_questions'),
     path('questionnaire/<int:questionnaire_id>/', take_quiz_view, name='take_questions'),
     path('questionnaire/<int:questionnaire_id>/result/<int:score>/', quiz_result_view, name='questions_result'),
+    path('test-history/', views.quiz_history_view, name='test_history'),
 
 
 

@@ -106,6 +106,20 @@
                 <label class="block text-sm font-medium text-gray-900 mb-2">ข้อมูลการติดต่อ</label>
                 {{ form.contact }}
             </div>
+            <h2 class="font-bold mb-4 text-gray-900">คะแนนโดยรวม</h2>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl text-yellow-500">{{ doctor.get_average_rating }}</span>
+                <div class="text-yellow-500 text-xl">
+                    {% with ''|center:doctor.get_average_rating|floatformat:"0" as stars %}
+                        {% for _ in stars %}★{% endfor %}
+                    {% endwith %}
+                    {% with ''|center:5|length|add:"-"|add:doctor.get_average_rating|floatformat:"0" as empty_stars %}
+                        {% for _ in empty_stars %}☆{% endfor %}
+                    {% endwith %}
+                </div>
+                <span class="text-gray-500">({{ doctor.get_review_count }} รีวิว)</span>
+            </div>
+
         </div>
 
         <!-- Practice Information -->

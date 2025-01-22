@@ -11,6 +11,11 @@ from django.utils.timezone import  now, timedelta, localtime
 from django.shortcuts import render , redirect , HttpResponse,get_object_or_404
 from django.http import JsonResponse
 from datetime import datetime, timedelta
+from django.contrib import messages
+from django.db import transaction
+from django.utils import timezone
+from chat.models import ChatRoom
+
 
 
 
@@ -18,17 +23,17 @@ from datetime import datetime, timedelta
 def home_view(request):
     # Redirect admins to the admin dashboard
     if request.user.is_staff:
-        return redirect('admin_dashboard')  # Replace with your actual admin dashboard URL name
+        return redirect('admin_dashboard')
 
     # If the user is logged in, just render the home page
     if request.user.is_authenticated:
-        # Check if the user is in the 'member' group
+
         is_member = request.user.groups.filter(name='member').exists()
-        # Check if the user is in the 'doctor' group
+
         is_doctor = request.user.groups.filter(name='doctor').exists()
 
-        # If the user is a member or doctor, they can stay on the home page
-        # and choose where to go next
+
+
         return render(request, 'home.html', {'is_member': is_member, 'is_doctor': is_doctor})
 
     # If not authenticated, redirect to the login page
@@ -106,11 +111,15 @@ def doctor_profile_view(request, id):
         'is_authenticated': is_authenticated,
         'today': datetime.now().date(),
         'max_date': datetime.now().date() + timedelta(days=30),
+        'average_rating': doctor.get_average_rating(),
+        'review_count': doctor.get_review_count()
     })
+
 
 def doctor_list(request):
     doctors = DoctorProfile.objects.all()
     return render(request, 'doctorlist.html', {'doctors': doctors})
+
 
 
 # หน้าแรกสำหรับเลือกแบบทดสอบ
@@ -118,6 +127,8 @@ def select_quiz_view(request):
     questionnaires = Questionnaire.objects.all()
     print(questionnaires)  # Add this to check if data is being fetched
     return render(request, 'select_questions.html', {'questionnaires': questionnaires})
+
+
 
 # หน้าสำหรับแสดงคำถามของแบบทดสอบที่เลือก
 @login_required(login_url='login')  # Specify the URL to redirect to if not logged in
@@ -134,18 +145,18 @@ def take_quiz_view(request, questionnaire_id):
         return redirect('questions_result', questionnaire_id=questionnaire.id, score=score)
     return render(request, 'take_questions.html', {'questionnaire': questionnaire, 'questions': questions})
 
+
+
 # หน้าสำหรับแสดงผลลัพธ์หลังทำแบบทดสอบ
 def quiz_result_view(request, questionnaire_id, score):
     questionnaire = Questionnaire.objects.get(id=questionnaire_id)
 
-    # Fetch the appropriate result based on the score range
     result = Result.objects.filter(
         questionnaire=questionnaire,
         score_low__lte=score,
         score_high__gte=score
     ).first()
 
-    # If a result is found, use its fields for the recommendation, otherwise set a default message
     if result:
         recommendation = result.result_description
         stress_level = result.stress_level
@@ -153,11 +164,34 @@ def quiz_result_view(request, questionnaire_id, score):
         recommendation = "No recommendation available for this score."
         stress_level = "Unknown"
 
+    # บันทึกประวัติการทำแบบทดสอบ
+    QuizHistory.objects.create(
+        user=request.user,
+        questionnaire=questionnaire,
+        score=score,
+        stress_level=stress_level,
+        result_description=recommendation
+    )
+
     return render(request, 'questions_result.html', {
         'questionnaire': questionnaire,
         'score': score,
         'recommendation': recommendation,
-        'stress_level': stress_level,  # You can also pass the stress level if needed in the template
+        'stress_level': stress_level,
+    })
+
+
+
+
+@login_required
+def quiz_history_view(request):
+    # ใช้ select_related เพื่อลดจำนวนการ query
+    histories = QuizHistory.objects.filter(user=request.user) \
+        .select_related('questionnaire', 'user') \
+        .order_by('-created_at')  # เรียงจากใหม่ไปเก่า
+
+    return render(request, 'test_history.html', {
+        'histories': histories
     })
 
 
@@ -167,8 +201,10 @@ def doctor_dashboard(request):
         return redirect('home')  # Redirect if the user is not a doctor
     return render(request, 'doctor_dashboard.html')
 
+
 def is_admin(user):
     return user.is_staff and user.is_superuser
+
 
 @user_passes_test(is_admin)
 def admin_dashboard_view(request):
@@ -215,6 +251,7 @@ def admin_dashboard_view(request):
 
     return render(request, "admin_dashboard.html", {"users": users})
 
+
 def is_user_online(user):
     if user.last_login:
         return user.last_login >= now() - timedelta(minutes=5)
@@ -222,33 +259,50 @@ def is_user_online(user):
 
 
 def schedule_view(request):
-    # Get appointments for the logged-in user
     if hasattr(request.user, 'doctorprofile'):
         appointments = Appointment.objects.filter(doctor=request.user.doctorprofile)
     else:
         appointments = Appointment.objects.filter(member=request.user.profile)
 
     appointments = appointments.order_by('appointment_date', 'time')
+    now = timezone.now()
+
+    for appointment in appointments:
+        try:
+            # พยายามดึง chat room หรือสร้างใหม่ถ้ายังไม่มี
+            chat_room, created = ChatRoom.objects.get_or_create(
+                appointment=appointment,
+                defaults={
+                    'member': appointment.member.user,
+                    'doctor': appointment.doctor.user,
+                    'status': 'active'
+                }
+            )
+
+            appointment_datetime = timezone.make_aware(
+                datetime.combine(appointment.appointment_date, appointment.time)
+            )
+            end_time = appointment_datetime + timedelta(hours=1)
+
+            appointment.is_in_session = appointment_datetime <= now <= end_time
+            appointment.chat_status = chat_room.status
+            appointment.chat_active = (
+                    chat_room.status == 'active' and
+                    appointment.is_in_session
+            )
+
+        except Exception as e:
+            print(f"Error processing appointment: {e}")
+            appointment.chat_status = None
+            appointment.is_in_session = False
+            appointment.chat_active = False
 
     context = {
         'appointments': appointments,
-    }
-
-    return render(request, 'schedule.html', context)
-
-
-def schedule_view(request):
-    if hasattr(request.user, 'doctorprofile'):
-        appointments = Appointment.objects.filter(doctor=request.user.doctorprofile)
-    else:
-        appointments = Appointment.objects.filter(member=request.user.profile)
-
-    appointments = appointments.order_by('appointment_date', 'time')
-
-    context = {
-        'appointments': appointments,
+        'current_time': now,
     }
     return render(request, 'schedule.html', context)
+
 
 
 # view สำหรับสร้างการนัดหมายใหม่
@@ -288,3 +342,112 @@ def create_appointment(request):
             return redirect('home')
 
     return redirect('home')
+
+
+@login_required
+def request_doctor_approval(request):
+    # เช็คว่าเป็น member และยังไม่เป็น doctor
+    if request.user.groups.filter(name='doctor').exists():
+        messages.error(request, 'คุณเป็นแพทย์อยู่แล้ว')
+        return redirect('home')
+
+    if not request.user.groups.filter(name='member').exists():
+        messages.error(request, 'คุณไม่มีสิทธิ์ในการขอเป็นแพทย์')
+        return redirect('home')
+
+    # เช็คว่ามีคำขอที่รออยู่หรือไม่
+    existing_request = DoctorApprovalRequest.objects.filter(
+        user=request.user,
+        status='pending'
+    ).exists()
+
+    if existing_request:
+        messages.info(request, 'คุณมีคำขอที่รออนุมัติอยู่แล้ว')
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = DoctorVerificationForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            doctor_request = form.save(commit=False)
+            doctor_request.user = request.user
+            doctor_request.save()
+            messages.success(request, 'ส่งคำขอเรียบร้อยแล้ว')
+            return redirect('home')
+    else:
+        form = DoctorVerificationForm(user=request.user)
+
+    return render(request, 'request_doctor_approval.html', {'form': form})
+
+
+# สำหรับ Superuser ดูรายการคำขอ
+@user_passes_test(lambda u: u.is_superuser)
+def doctor_approval_list(request):
+    requests = DoctorApprovalRequest.objects.all()
+    return render(request, 'doctor_approval_list.html', {
+        'pending_requests': requests.filter(status='pending'),
+        'approved_requests': requests.filter(status='approved'),
+        'rejected_requests': requests.filter(status='rejected')
+    })
+
+
+# สำหรับ Superuser ดูรายละเอียดคำขอ
+@user_passes_test(lambda u: u.is_superuser)
+def doctor_request_detail(request, request_id):
+    approval_request = get_object_or_404(DoctorApprovalRequest, id=request_id)
+    return render(request, 'doctor_request_detail.html', {
+        'request': approval_request
+    })
+
+
+# สำหรับ Superuser อนุมัติ/ปฏิเสธ
+@user_passes_test(lambda u: u.is_superuser)
+def handle_doctor_approval(request, request_id):
+    approval_request = get_object_or_404(DoctorApprovalRequest, id=request_id)
+
+    # ถ้าไม่ใช่สถานะ pending ให้ redirect กลับ
+    if approval_request.status != 'pending':
+        messages.error(request, 'คำขอนี้ถูกดำเนินการไปแล้ว')
+        return redirect('doctor_requests_list')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            try:
+                with transaction.atomic():
+                    # เช็คว่ามี groups ที่ต้องการหรือไม่
+                    try:
+                        doctor_group = Group.objects.get(name='doctor')
+                        member_group = Group.objects.get(name='member')
+                    except Group.DoesNotExist:
+                        messages.error(request, 'เกิดข้อผิดพลาดในการจัดการกลุ่มผู้ใช้')
+                        return redirect('doctor_requests_list')
+
+                    user = approval_request.user
+                    # เปลี่ยนกลุ่ม
+                    user.groups.remove(member_group)
+                    user.groups.add(doctor_group)
+
+                    # สร้าง DoctorProfile
+                    DoctorProfile.objects.create(
+                        user=user,
+                        title=approval_request.title,
+                        specialty='',  # เพิ่มตามต้องการ
+                        work_location=approval_request.work_location,
+                        contact=approval_request.phone
+                    )
+
+                    approval_request.status = 'approved'
+                    approval_request.save()
+
+                    messages.success(request, f'อนุมัติคำขอของ {user.get_full_name()} เรียบร้อยแล้ว')
+
+            except Exception as e:
+                messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+                return redirect('doctor_requests_list')
+
+        elif action == 'reject':
+            approval_request.status = 'rejected'
+            approval_request.save()
+            messages.info(request, f'ปฏิเสธคำขอของ {approval_request.user.get_full_name()} เรียบร้อยแล้ว')
+
+    return redirect('doctor_requests_list')

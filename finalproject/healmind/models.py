@@ -3,6 +3,8 @@ from django.contrib.auth.models import User,AbstractUser
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.conf import settings
+from django.apps import apps
+
 
 # Create your models here.
 class Profile(models.Model):
@@ -31,6 +33,26 @@ class DoctorProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} Doctor Profile"
+
+    def get_average_rating(self):
+        ChatRoomHistory = apps.get_model('chat', 'ChatRoomHistory')
+        histories = ChatRoomHistory.objects.filter(
+            doctor=self.user,
+            rating__isnull=False
+        )
+        if histories.exists():
+            total_rating = sum(h.rating for h in histories)
+            return round(total_rating / histories.count(), 1)
+        return 0
+
+    def get_review_count(self):
+        ChatRoomHistory = apps.get_model('chat', 'ChatRoomHistory')
+        return ChatRoomHistory.objects.filter(
+            doctor=self.user,
+            rating__isnull=False
+        ).count()
+
+
 
 
 class QuestionnaireAdmin(admin.ModelAdmin):
@@ -73,6 +95,17 @@ class Result(models.Model):
     def __str__(self):
         return f'{self.stress_level} ({self.score_low}-{self.score_high})'
 
+class QuizHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    questionnaire = models.ForeignKey(Questionnaire, on_delete=models.CASCADE)
+    score = models.IntegerField()
+    stress_level = models.CharField(max_length=255)
+    result_description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
 
 class Appointment(models.Model):
     doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='doctor_appointments')
@@ -88,3 +121,40 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.member.user.username} - {self.doctor.name} - {self.appointment_date} {self.time}"
+
+
+
+
+
+class DoctorApprovalRequest(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    # ข้อมูลจาก form
+    title = models.CharField(max_length=10, blank=True)
+    work_location = models.CharField(max_length=255, blank=True)
+    address = models.CharField(max_length=255, blank=True)
+    district = models.CharField(max_length=100, blank=True)
+    province = models.CharField(max_length=100, blank=True)
+    postal_code = models.CharField(max_length=10, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+
+    # สถานะและเอกสาร
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'รอการอนุมัติ'),
+            ('approved', 'อนุมัติแล้ว'),
+            ('rejected', 'ปฏิเสธ')
+        ],
+        default='pending'
+    )
+    document = models.FileField(upload_to='doctor_documents/', blank=True, null=True)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Doctor Request - {self.user.get_full_name()}"
+
+    class Meta:
+        ordering = ['-created_at']

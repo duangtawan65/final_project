@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="max-w-6xl mx-auto p-6">
+    <a href="{% url 'admin_dashboard' %}"
+           class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg">
+            กลับไป Dashboard
+    </a>
+    <h1 class="text-2xl font-bold mb-6 text-gray-900">รายการคำขอเป็นแพทย์</h1>
+    
+    <!-- คำขอที่รออนุมัติ -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900">คำขอที่รออนุมัติ</h2>
+        {% if pending_requests %}
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อ-นามสกุล</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่นคำขอ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานที่ทำงาน</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for request in pending_requests %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ request.user.get_full_name }}
+                            </div>
+                            <div class="text-sm text-gray-500">{{ request.user.email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ request.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            {{ request.work_location }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'doctor_request_detail' request.id %}" class="text-blue-600 hover:text-blue-900">
+                                ดูรายละเอียด
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-gray-500">ไม่มีคำขอที่รออนุมัติ</p>
+        {% endif %}
+    </div>
+
+    <!-- คำขอที่อนุมัติแล้ว -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold mb-4 text-gray-900">คำขอที่อนุมัติแล้ว</h2>
+        {% if approved_requests %}
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อ-นามสกุล</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่นคำขอ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานที่ทำงาน</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for request in approved_requests %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                {{ request.user.get_full_name }}
+                            </div>
+                            <div class="text-sm text-gray-500">{{ request.user.email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ request.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-500">
+                            {{ request.work_location }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <a href="{% url 'doctor_request_detail' request.id %}" class="text-blue-600 hover:text-blue-900">
+                                ดูรายละเอียด
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-gray-500">ไม่มีคำขอที่อนุมัติ</p>
+        {% endif %}
+    </div>
+
+{% endblock %}

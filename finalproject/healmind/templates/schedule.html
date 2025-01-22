@@ -80,36 +80,44 @@
                                             {{ appointment.service_mode }}
                                         </div>
                                         <!-- Appointment Status -->
-                                        <div id="status-{{ appointment.id }}" class="text-sm">
+                                        <div class="text-sm">
                                             <span class="px-2 py-1 rounded-full text-xs
-                                                         {% if is_appointment_active %}
-                                                             bg-green-100 text-green-800
-                                                         {% else %}
-                                                             bg-gray-100 text-gray-800
-                                                         {% endif %}">
-                                                <span id="status-text-{{ appointment.id }}">
+                                                {% if appointment.chat_status == 'active' and appointment.is_in_session %}
+                                                    bg-green-100 text-green-800
+                                                {% elif appointment.chat_status == 'ended' %}
+                                                    bg-red-100 text-red-800
+                                                {% else %}
+                                                    bg-gray-100 text-gray-800
+                                                {% endif %}">
+                                                {% if appointment.chat_status == 'ended' %}
+                                                    เสร็จสิ้นการปรึกษา
+                                                {% elif appointment.is_in_session and appointment.chat_active %}
+                                                    กำลังให้คำปรึกษา
+                                                {% else %}
                                                     กำลังรอเวลานัด
-                                                </span>
+                                                {% endif %}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <!-- Chat Button -->
-                            <button
-                                id="chat-btn-{{ appointment.id }}"
-                                onclick="window.location.href='{% url 'chat:chat_room' appointment.id %}'"
-                                class="hidden px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 mr-2">
-                                เข้าสู่ห้องแชท
-                            </button>
-                            <!-- Action Menu -->
-                            <button class="text-gray-400 hover:text-gray-600">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                                </svg>
-                            </button>
-                        </div>
+                            <div class="flex items-center">
+                                {% if appointment.is_in_session and appointment.chat_status == 'active' %}
+                                    <button
+                                        onclick="window.location.href='{% url 'chat:chat_room' appointment.id %}'"
+                                        class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 mr-2"
+                                    >
+                                        เข้าสู่ห้องแชท
+                                    </button>
+                                {% endif %}
+                                <button class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
                     </div>
                     {% endfor %}
                 </div>
@@ -125,29 +133,19 @@
 
 <script>
 function checkAppointmentTime() {
+    const now = new Date();
+
     {% for date in appointment_list %}
         {% for appointment in date.list %}
             const appointmentTime = new Date("{{ appointment.appointment_date|date:'Y-m-d' }}T{{ appointment.time|time:'H:i' }}");
-            const now = new Date();
-            const statusElement = document.getElementById('status-text-{{ appointment.id }}');
-            const chatButton = document.getElementById('chat-btn-{{ appointment.id }}');
+            const endTime = new Date(appointmentTime.getTime() + 60*60*1000);
 
-            // ตรวจสอบว่าอยู่ในช่วงเวลานัดหรือไม่ (1 ชั่วโมง)
-            if (now >= appointmentTime && now <= new Date(appointmentTime.getTime() + 60*60*1000)) {
-                chatButton.classList.remove('hidden');
-                statusElement.textContent = "กำลังให้คำปรึกษา";
-                statusElement.parentElement.classList.remove('bg-gray-100', 'text-gray-800');
-                statusElement.parentElement.classList.add('bg-green-100', 'text-green-800');
-            } else if (now < appointmentTime) {
-                chatButton.classList.add('hidden');
-                statusElement.textContent = "กำลังรอเวลานัด";
-                statusElement.parentElement.classList.remove('bg-green-100', 'text-green-800');
-                statusElement.parentElement.classList.add('bg-gray-100', 'text-gray-800');
-            } else {
-                chatButton.classList.add('hidden');
-                statusElement.textContent = "เสร็จสิ้นการปรึกษา";
-                statusElement.parentElement.classList.remove('bg-green-100', 'text-green-800');
-                statusElement.parentElement.classList.add('bg-gray-100', 'text-gray-800');
+            // อัพเดทสถานะการแสดงผลตามข้อมูลจาก server
+            if ("{{ appointment.chat_status }}" === "active" && now >= appointmentTime && now <= endTime) {
+                const chatButton = document.getElementById('chat-btn-{{ appointment.id }}');
+                if (chatButton) {
+                    chatButton.classList.remove('hidden');
+                }
             }
         {% endfor %}
     {% endfor %}

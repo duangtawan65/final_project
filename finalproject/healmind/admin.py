@@ -1,6 +1,5 @@
-from .models import Questionnaire, Question, Choice, Result
 from django.contrib import admin
-from .models import Profile,DoctorProfile
+from .models import *
 
 class ProfileAdmin(admin.ModelAdmin):
     # แก้ไข list_display โดยใช้ข้อมูลจาก `User` (Profile.user)
@@ -20,6 +19,35 @@ class ProfileAdmin(admin.ModelAdmin):
 # DoctorProfileAdmin สำหรับแสดงข้อมูลใน Admin ของ DoctorProfile
 class DoctorProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'bio', 'work_location', 'session_rate', 'service_mode', 'contact')
+
+
+@admin.register(DoctorApprovalRequest)
+class DoctorApprovalRequestAdmin(admin.ModelAdmin):
+    list_display = ['user', 'title', 'work_location', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'work_location']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('ข้อมูลผู้ใช้', {
+            'fields': ('user', 'title')
+        }),
+        ('ข้อมูลการทำงาน', {
+            'fields': ('work_location',)
+        }),
+        ('ข้อมูลติดต่อ', {
+            'fields': ('address', 'district', 'province', 'postal_code', 'phone')
+        }),
+        ('เอกสารและหมายเหตุ', {
+            'fields': ('document', 'note')
+        }),
+        ('สถานะและเวลา', {
+            'fields': ('status', 'created_at', 'updated_at')
+        }),
+    )
+
+    def has_add_permission(self, request):
+        return False
 
 
 admin.site.register(Profile, ProfileAdmin)

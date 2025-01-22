@@ -193,3 +193,104 @@ class DoctorProfileForm(forms.ModelForm):
             user.save()
             instance.save()
         return instance
+
+
+class DoctorVerificationForm(forms.ModelForm):
+    # Add fields for first_name and last_name
+    first_name = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+            'placeholder': 'ชื่อ'
+        })
+    )
+    last_name = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+            'placeholder': 'นามสกุล'
+        })
+    )
+    email = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+            'placeholder': 'อีเมล'
+        })
+    )
+
+    # Modify title to use radio button-like selection
+    title = forms.ChoiceField(
+        choices=[
+            ('', 'เลือกคำนำหน้า'),
+            ('นพ.', 'นพ. / Mr.'),
+            ('พญ.', 'พญ. / Mrs.'),
+            ('ผศ.นพ.', 'ผู้ช่วยศาสตราจารย์นายแพทย์'),
+            ('ผศ.พญ.', 'ผู้ช่วยศาสตราจารย์แพทย์หญิง'),
+            ('รศ.นพ.', 'รองศาสตราจารย์นายแพทย์'),
+            ('รศ.พญ.', 'รองศาสตราจารย์แพทย์หญิง'),
+            ('ศ.นพ.', 'ศาสตราจารย์นายแพทย์'),
+            ('ศ.พญ.', 'ศาสตราจารย์แพทย์หญิง'),
+
+        ],
+        widget=forms.Select(attrs={
+            'class': 'w-full px-3 py-2 border rounded-lg text-gray-900'
+        })
+    )
+
+    class Meta:
+        model = DoctorApprovalRequest
+        fields = [
+            'title', 'first_name', 'last_name', 'email',
+            'work_location', 'address', 'district', 'province',
+            'postal_code', 'phone', 'document', 'note'
+        ]
+        widgets = {
+            'work_location': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+                'placeholder': 'สถานที่ทำงานปัจจุบัน'
+            }),
+            'address': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+                'placeholder': 'บ้านเลขที่/หมู่บ้าน'
+            }),
+            'district': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+                'placeholder': 'เขต/อำเภอ'
+            }),
+            'province': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+                'placeholder': 'จังหวัด'
+            }),
+            'postal_code': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+                'placeholder': 'รหัสไปรษณีย์'
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
+                'placeholder': 'เบอร์โทรติดต่อ'
+            }),
+            'note': forms.Textarea(attrs={
+                'class': 'w-full px-3 py-2 border rounded-lg text-gray-900',
+                'rows': 4,
+                'placeholder': 'หมายเหตุเพิ่มเติม (ถ้ามี)'
+            }),
+            'document': forms.FileInput(attrs={
+                'class': 'w-full',
+                'accept': 'application/pdf'  # รับเฉพาะไฟล์ PDF
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        # Populate fields if user exists
+        if user:
+            self.fields['first_name'].initial = user.first_name
+            self.fields['last_name'].initial = user.last_name
+            self.fields['email'].initial = user.email
+
+            # Check for doctor profile
+            if hasattr(user, 'doctorprofile'):
+                self.fields['phone'].initial = user.doctorprofile.contact
+                self.fields['work_location'].initial = user.doctorprofile.work_location

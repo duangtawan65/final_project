@@ -1,71 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HealMind - Home</title>
-    <script src="//unpkg.com/alpinejs" defer></script>
-    <!-- Load static files tag -->
-    {% load static %}
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@100;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/dist/styles.css' %}">
-    <style>
-        * {
-           font-family: "Fraunces", serif;
-        }
-    </style>
-</head>
-<body class="bg-black text-white">
+{% extends 'base.html' %}
+{% load static %}
 
-    <!-- Navigation Bar -->
-    <header class="bg-white shadow-md text-black">
-        <div class="container mx-auto flex justify-between items-center py-4 px-4">
-            <div class="flex items-center">
-                <img src="{% static 'images/HealMind.png' %}" alt="HealMind Logo" class="mx-auto" style="height: 70px; width: 70px;">
-                <span class="ml-3 text-xl font-bold">HealMind</span>
-            </div>
-            <nav class="space-x-4 flex items-center">
-                <a href="{% url 'home' %}" class="hover:text-gray-600">Home</a>
-                <a href="#" class="hover:text-gray-600">About</a>
-
-                {% if user.is_authenticated %}
-                    <!-- Profile Icon and Username -->
-                    <div class="flex items-center space-x-2">
-                        {% if is_member %}
-                            <a href="{% url 'profile' %}" class="flex items-center space-x-2">
-                        {% elif is_doctor %}
-                            <a href="{% url 'doctor_profile' user.id %}" class="flex items-center space-x-2">
-                        {% else %}
-                            <a href="#" class="flex items-center space-x-2"> <!-- Default case -->
-                        {% endif %}
-                            <img src="{% static 'images/user.png' %}" alt="Profile Icon" class="rounded-full" style="height: 30px; width: 30px;">
-                        </a>
-                         <!-- หน้า schedule -->
-                        {% if user.groups.all.0.name == 'member' or user.groups.all.0.name == 'doctor' %}
-                            <a href="{% url 'schedule' %}" class="hover:text-gray-600">ตารางนัดหมาย</a>
-                        {% endif %}
-
-                        <!-- Logout Button -->
-                        <form method="post" action="{% url 'logout' %}" class="inline-block">
-                            {% csrf_token %}
-                            <button type="submit" class="hover:text-gray-600">Logout</button>
-                        </form>
-                    </div>
-                {% else %}
-                    <a href="{% url 'login' %}" class="hover:text-gray-600">Sign in</a>
-                    <a href="{% url 'register' %}" class="hover:text-gray-600">Sign up</a>
-                {% endif %}
-            </nav>
-        </div>
-    </header>
-
+{% block main %}
     <!-- Hero Section -->
-    <section class="bg-cover bg-center" style="background-image: url('{% static 'images/360_F_692679692_SeQDy50ZrWDWs2Jy.jpg' %}'); height: 65vh; background-size: cover;">
+    <section class="bg-cover bg-center" style="background-image: url('{% static 'images/360_F_692679692_SeQDy50ZrWDWs2Jy.jpg' %}'); height: 65vh  ; background-size: cover;">
         <div class="container mx-auto h-full flex flex-col justify-center items-center text-center">
             <h1 class="text-5xl text-black font-bold">HealMind</h1>
             <p class="mt-4 text-2xl text-black">ตรวจสุขภาพจิตของคุณ</p>
             <p class="mt-2 text-black">คุณจะไม่เป็นไรจริงๆ เชื่อเรา! ทำได้เพียงแค่คุณเดินไปข้างหน้า</p>
-        </div>
+        </div>s
     </section>
 
     <!-- Icon Section -->
@@ -89,6 +32,4 @@
             </a>
         </div>
     </section>
-
-</body>
-</html>
+{% endblock %}

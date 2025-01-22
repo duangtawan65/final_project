@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block main %}
+<div class="p-8 relative">
+    <div class="bg-[#D8CCE6] rounded-2xl overflow-hidden shadow-lg">
+        <table class="w-full">
+            <thead>
+                <tr class="bg-[#B4A3CC]">
+                    <th class="px-6 py-4 text-left text-black">Name</th>
+                    <th class="px-6 py-4 text-left text-black">Date</th>
+                    <th class="px-6 py-4 text-left text-black">Test type</th>
+                    <th class="px-6 py-4 text-left text-black">result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for history in histories %}
+                <tr class="bg-gray-50 hover:bg-gray-100">
+                    <td class="px-6 py-4 text-black">{{ history.user.username }}</td>
+                    <td class="px-6 py-4 text-black">{{ history.created_at|date:"d M Y" }}</td>
+                    <td class="px-6 py-4 text-black">{{ history.questionnaire.questionnaire_name }}</td>
+                    <td class="px-6 py-4 text-black">{{ history.result_description }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="px-6 py-4 text-center text-black">ไม่พบประวัติการทำแบบทดสอบ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}
