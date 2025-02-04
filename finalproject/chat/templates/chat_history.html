@@ -1,7 +1,13 @@
 {% extends 'base.html' %}
 
 {% block main %}
+
 <div class="min-h-screen bg-gradient-to-b from-[#FFF3E9] to-[#F3E5F5] p-6">
+    <div class="mb-4">
+                <a href="{% url 'test_history' %}" class="bg-[#B4A3CC] hover:bg-[#9B85BC] text-black px-6 py-2 rounded-lg shadow transition duration-200 inline-block">
+                    ประวัติการทำแบบทดสอบ
+                </a>
+    </div>
     <div class="max-w-5xl mx-auto">
         <h1 class="text-2xl font-bold mb-6 text-gray-900">ประวัติการแชท</h1>
         

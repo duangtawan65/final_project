@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex justify-center items-center">
+    <div class="w-full max-w-2xl bg-white shadow-lg rounded-lg p-6">
+        <h1 class="text-2xl font-bold text-center text-gray-700">💬 Chat with AI</h1>
+
+        <div id="chat-box" class="h-96 overflow-y-auto border p-4 rounded mt-4 bg-gray-50 text-gray-900">
+            {% if request.session.chat_history %}
+                {% for message in request.session.chat_history %}
+                    {% if message.role == "user" %}
+                        <div class="flex justify-end mb-2">
+                            <div class="bg-blue-500 text-white px-4 py-2 rounded-lg max-w-xs text-gray-900">
+                                {{ message.content }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="flex justify-start mb-2">
+                            <div class="bg-gray-300 px-4 py-2 rounded-lg max-w-xs text-gray-900">
+                                {{ message.content }}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <p class="text-center text-gray-500">เริ่มต้นแชทกับ AI ได้เลย!</p>
+            {% endif %}
+        </div>
+
+        <form method="POST" class="mt-4 flex">
+            {% csrf_token %}
+            <input type="text" name="message" placeholder="พิมพ์ข้อความ..." required
+                   class="flex-grow border px-4 py-2 rounded-l-lg focus:outline-none text-gray-900">
+            <button type="submit"
+                    class="bg-blue-500 text-white px-6 py-2 rounded-r-lg hover:bg-blue-600 transition">
+                ส่ง
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Scroll ไปที่ข้อความล่าสุดอัตโนมัติ
+        document.addEventListener("DOMContentLoaded", function () {
+            var chatBox = document.getElementById("chat-box");
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+    </script>
+</body>
+{% endblock %}

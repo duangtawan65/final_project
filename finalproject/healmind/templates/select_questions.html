@@ -1,23 +1,32 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block main %}
-<div class="container mx-auto mt-10">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Loop through each questionnaire and create a card -->
-        {% for questionnaire in questionnaires %}
-            <div class="bg-purple-200 p-4 rounded-lg shadow-md text-center">
-                <img src="{% static 'images/HealMind.png' %}" alt="{{ questionnaire.questionnaire_name }}" class="w-full h-48 object-cover rounded-md mb-2">
-                <h2 class="text-lg font-semibold text-purple-700">{{ questionnaire.questionnaire_name }}</h2>
-                <p class="text-sm text-gray-600">{{ questionnaire.description }}</p>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    {% for questionnaire in questionnaires %}
+        <div class="bg-purple-200 p-4 rounded-lg shadow-md text-center">
+            <img src="{% static 'images/HealMind.png' %}" alt="{{ questionnaire.questionnaire_name }}" class="w-full h-48 object-cover rounded-md mb-2">
+            <h2 class="text-lg font-semibold text-purple-700">{{ questionnaire.questionnaire_name }}</h2>
+            <p class="text-sm text-gray-600">{{ questionnaire.description }}</p>
 
-                <!-- Show "Start Test" or "Login" based on authentication -->
-                {% if user.is_authenticated %}
-                    <a href="{% url 'take_questions' questionnaire.id %}" class="mt-4 inline-block bg-white text-purple-700 font-semibold px-4 py-2 rounded-lg">Start Test</a>
+            <!-- เพิ่มส่วนแสดงข้อมูลแพทย์ถ้าไม่ใช่แบบทดสอบของระบบ -->
+            {% if not questionnaire.is_system %}
+                <p class="text-sm text-gray-600 mt-2">
+                    แบบทดสอบโดย: {{ questionnaire.created_by.get_full_name }}
+                </p>
+            {% endif %}
+
+            {% if user.is_authenticated %}
+                {% if user.groups.all.0.name == 'doctor' %}
+                    <!-- ปุ่มสำหรับ doctor -->
+                    <a href="{% url 'edit_questionnaire' questionnaire.id %}" class="mt-4 inline-block bg-green-500 text-white font-semibold px-4 py-2 rounded-lg">แก้ไข</a>
                 {% else %}
-                    <a href="{% url 'login' %}" class="mt-4 inline-block bg-red-500 text-white font-semibold px-4 py-2 rounded-lg">Login to Start Test</a>
+                    <!-- ปุ่มสำหรับ member -->
+                    <a href="{% url 'take_questions' questionnaire.id %}" class="mt-4 inline-block bg-white text-purple-700 font-semibold px-4 py-2 rounded-lg">เริ่มทำแบบทดสอบ</a>
                 {% endif %}
-            </div>
-        {% endfor %}
-    </div>
+            {% else %}
+                <a href="{% url 'login' %}" class="mt-4 inline-block bg-red-500 text-white font-semibold px-4 py-2 rounded-lg">เข้าสู่ระบบเพื่อทำแบบทดสอบ</a>
+            {% endif %}
+        </div>
+    {% endfor %}
 </div>
 {% endblock %}

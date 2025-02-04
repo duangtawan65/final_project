@@ -23,5 +23,6 @@ urlpatterns = [
     path("",include('healmind.urls')),
     path("",include('chat.urls')),
     path("",include('video_call.urls')),
+
     path("admin/", admin.site.urls),
 ]

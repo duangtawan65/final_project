@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "chat",
     "healmind",
+    "article",
     "video_call",
     "tailwind",
     "theme",
@@ -168,3 +169,4 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     }
 }
+

@@ -5,3 +5,8 @@ django-tailwind
 openpyxl
 channels
 daphne
+transformers
+torch
+sentencepiece
+accelerate
+llama-stack

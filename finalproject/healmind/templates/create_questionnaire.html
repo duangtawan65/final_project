@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">สร้างแบบทดสอบ</h2>
+        <p class="text-gray-600 mt-2">กรอกข้อมูลเพื่อสร้างแบบทดสอบใหม่</p>
+    </div>
+
+    <form method="POST" id="questionnaireForm" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- ข้อมูลพื้นฐาน -->
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div class="space-y-4">
+                <div>
+                    <label for="questionnaireName" class="block text-sm font-medium text-gray-700 mb-1 t">ชื่อแบบทดสอบ</label>
+                    <input type="text"
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                           id="questionnaireName"
+                           name="questionnaire_name"
+                           required>
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">คำอธิบาย</label>
+                    <textarea class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                              id="description"
+                              name="description"
+                              rows="3"
+                              required></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ส่วนของคำถาม -->
+        <div id="questionsContainer" class="space-y-4">
+            <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200 question-card" data-question-index="1">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">คำถามที่ 1</h3>
+                    <button type="button"
+                            class="remove-question hidden px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200">
+                        ลบคำถาม
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">คำถาม</label>
+                        <textarea class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                  name="questions[]"
+                                  required></textarea>
+                    </div>
+
+                    <!-- ส่วนของตัวเลือก -->
+                    <div class="choices-container space-y-3">
+                        <div class="grid grid-cols-12 gap-4 items-start choice-row">
+                            <div class="col-span-7">
+                                <input type="text"
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                       name="choices[1][]"
+                                       placeholder="ตัวเลือก"
+                                       required>
+                            </div>
+                            <div class="col-span-3">
+                                <input type="number"
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                       name="values[1][]"
+                                       placeholder="คะแนน"
+                                       required>
+                            </div>
+                            <div class="col-span-2">
+                                <button type="button"
+                                        class="remove-choice hidden w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200">
+                                    ลบ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                            class="add-choice px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200">
+                        + เพิ่มตัวเลือก
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button type="button"
+                id="addQuestion"
+                class="w-full py-3 text-blue-600 hover:bg-blue-50 rounded-lg border-2 border-dashed border-blue-200">
+            + เพิ่มคำถามใหม่
+        </button>
+
+        <!-- ส่วนของเกณฑ์คะแนน -->
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">เกณฑ์การประเมินผล</h3>
+            </div>
+
+            <div id="resultsContainer" class="space-y-4">
+                <div class="grid grid-cols-12 gap-4 items-start result-row">
+                    <div class="col-span-2">
+                        <input type="number"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                               name="score_low[]"
+                               placeholder="คะแนนต่ำสุด"
+                               required>
+                    </div>
+                    <div class="col-span-2">
+                        <input type="number"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                               name="score_high[]"
+                               placeholder="คะแนนสูงสุด"
+                               required>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                               name="stress_level[]"
+                               placeholder="ระดับความเครียด"
+                               required>
+                    </div>
+                    <div class="col-span-4">
+                        <textarea class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                  name="result_description[]"
+                                  placeholder="คำอธิบายผล"
+                                  required></textarea>
+                    </div>
+                    <div class="col-span-1">
+                        <button type="button"
+                                class="remove-result w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200">
+                            ลบ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button"
+                    id="addResult"
+                    class="mt-4 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200">
+                + เพิ่มเกณฑ์
+            </button>
+        </div>
+
+        <div class="flex justify-end gap-4">
+            <button type="submit"
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                บันทึกแบบทดสอบ
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let questionCounter = 1;
+
+    // เพิ่มคำถาม
+    document.getElementById('addQuestion').addEventListener('click', function() {
+        questionCounter++;
+        // ส่วนเพิ่มคำถามใหม่
+        const questionTemplate = `
+            <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200 question-card mb-4" data-question-index="${questionCounter}">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">คำถามที่ ${questionCounter}</h3>
+                    <button type="button"
+                            class="remove-question px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200">
+                        ลบคำถาม
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">คำถาม</label>
+                        <textarea class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                  name="questions[]"
+                                  required></textarea>
+                    </div>
+
+                    <div class="choices-container space-y-3">
+                        <div class="grid grid-cols-12 gap-4 items-start choice-row">
+                            <div class="col-span-7">
+                                <input type="text"
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                       name="choices[${questionCounter}][]"
+                                       placeholder="ตัวเลือก"
+                                       required>
+                            </div>
+                            <div class="col-span-3">
+                                <input type="number"
+                                       class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                                       name="values[${questionCounter}][]"
+                                       placeholder="คะแนน"
+                                       required>
+                            </div>
+                            <div class="col-span-2">
+                                <button type="button"
+                                        class="remove-choice w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200 text-gray-900">
+                                    ลบ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button"
+                            class="add-choice px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 text-gray-900">
+                        + เพิ่มตัวเลือก
+                    </button>
+                </div>
+            </div>
+        `;
+        document.getElementById('questionsContainer').insertAdjacentHTML('beforeend', questionTemplate);
+    });
+
+    // เพิ่มตัวเลือก
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-choice')) {
+            const questionCard = e.target.closest('.question-card');
+            const questionIndex = questionCard.dataset.questionIndex;
+            // ส่วนเพิ่มตัวเลือก
+            const choiceTemplate = `
+                <div class="grid grid-cols-12 gap-4 items-start choice-row">
+                    <div class="col-span-7">
+                        <input type="text"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                               name="choices[${questionIndex}][]"
+                               placeholder="ตัวเลือก"
+                               required>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="number"
+                               class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                               name="values[${questionIndex}][]"
+                               placeholder="คะแนน"
+                               required>
+                    </div>
+                    <div class="col-span-2">
+                        <button type="button"
+                                class="remove-choice w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200 text-gray-900">
+                            ลบ
+                        </button>
+                    </div>
+                </div>
+            `;
+            questionCard.querySelector('.choices-container').insertAdjacentHTML('beforeend', choiceTemplate);
+        }
+    });
+
+    // ลบตัวเลือก
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-choice')) {
+            const choiceContainer = e.target.closest('.choices-container');
+            if (choiceContainer.querySelectorAll('.choice-row').length > 1) {
+                e.target.closest('.choice-row').remove();
+            }
+        }
+    });
+
+    // ลบคำถาม
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-question')) {
+            if (document.querySelectorAll('.question-card').length > 1) {
+                e.target.closest('.question-card').remove();
+            }
+        }
+    });
+
+    // เพิ่มเกณฑ์
+    document.getElementById('addResult').addEventListener('click', function() {
+        // ส่วนเพิ่มเกณฑ์
+        const resultTemplate = `
+            <div class="grid grid-cols-12 gap-4 items-start result-row">
+                <div class="col-span-2">
+                    <input type="number"
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                           name="score_low[]"
+                           placeholder="คะแนนต่ำสุด"
+                           required>
+                </div>
+                <div class="col-span-2">
+                    <input type="number"
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                           name="score_high[]"
+                           placeholder="คะแนนสูงสุด"
+                           required>
+                </div>
+                <div class="col-span-3">
+                    <input type="text"
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                           name="stress_level[]"
+                           placeholder="ระดับความเครียด"
+                           required>
+                </div>
+                <div class="col-span-4">
+                    <textarea class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                              name="result_description[]"
+                              placeholder="คำอธิบายผล"
+                              required></textarea>
+                </div>
+                <div class="col-span-1">
+                    <button type="button"
+                            class="remove-result w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200 text-gray-900">
+                        ลบ
+                    </button>
+                </div>
+            </div>
+        `;
+        document.getElementById('resultsContainer').insertAdjacentHTML('beforeend', resultTemplate);
+    });
+
+    // ลบเกณฑ์
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-result')) {
+            if (document.querySelectorAll('.result-row').length > 1) {
+                e.target.closest('.result-row').remove();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

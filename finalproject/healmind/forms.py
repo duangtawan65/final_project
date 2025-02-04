@@ -1,8 +1,13 @@
-from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from .models import *
 from django import forms
+import json
+import os
+
+
+
+
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=100, required=True)
@@ -196,7 +201,21 @@ class DoctorProfileForm(forms.ModelForm):
 
 
 class DoctorVerificationForm(forms.ModelForm):
-    # Add fields for first_name and last_name
+    province = forms.CharField(
+        widget=forms.Select(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-gray-900'
+        })
+    )
+    amphure = forms.CharField(
+        widget=forms.Select(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-gray-900'
+        })
+    )
+    tambon = forms.CharField(
+        widget=forms.Select(attrs={
+            'class': 'w-full px-4 py-2 border rounded-lg text-gray-900'
+        })
+    )
     first_name = forms.CharField(
         max_length=150,
         widget=forms.TextInput(attrs={
@@ -217,20 +236,17 @@ class DoctorVerificationForm(forms.ModelForm):
             'placeholder': 'อีเมล'
         })
     )
-
-    # Modify title to use radio button-like selection
     title = forms.ChoiceField(
         choices=[
             ('', 'เลือกคำนำหน้า'),
-            ('นพ.', 'นพ. / Mr.'),
-            ('พญ.', 'พญ. / Mrs.'),
+            ('นพ.', 'นายแพทย์'),
+            ('พญ.', 'แพทย์หญิง'),
             ('ผศ.นพ.', 'ผู้ช่วยศาสตราจารย์นายแพทย์'),
             ('ผศ.พญ.', 'ผู้ช่วยศาสตราจารย์แพทย์หญิง'),
             ('รศ.นพ.', 'รองศาสตราจารย์นายแพทย์'),
             ('รศ.พญ.', 'รองศาสตราจารย์แพทย์หญิง'),
             ('ศ.นพ.', 'ศาสตราจารย์นายแพทย์'),
             ('ศ.พญ.', 'ศาสตราจารย์แพทย์หญิง'),
-
         ],
         widget=forms.Select(attrs={
             'class': 'w-full px-3 py-2 border rounded-lg text-gray-900'
@@ -241,8 +257,8 @@ class DoctorVerificationForm(forms.ModelForm):
         model = DoctorApprovalRequest
         fields = [
             'title', 'first_name', 'last_name', 'email',
-            'work_location', 'address', 'district', 'province',
-            'postal_code', 'phone', 'document', 'note'
+            'work_location', 'address', 'province','amphure',
+            'tambon', 'postal_code', 'phone', 'document', 'note'
         ]
         widgets = {
             'work_location': forms.TextInput(attrs={
@@ -252,14 +268,6 @@ class DoctorVerificationForm(forms.ModelForm):
             'address': forms.TextInput(attrs={
                 'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
                 'placeholder': 'บ้านเลขที่/หมู่บ้าน'
-            }),
-            'district': forms.TextInput(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
-                'placeholder': 'เขต/อำเภอ'
-            }),
-            'province': forms.TextInput(attrs={
-                'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
-                'placeholder': 'จังหวัด'
             }),
             'postal_code': forms.TextInput(attrs={
                 'class': 'w-full px-4 py-2 border rounded-lg text-gray-900',
@@ -294,3 +302,108 @@ class DoctorVerificationForm(forms.ModelForm):
             if hasattr(user, 'doctorprofile'):
                 self.fields['phone'].initial = user.doctorprofile.contact
                 self.fields['work_location'].initial = user.doctorprofile.work_location
+
+
+class QuestionnaireForm(forms.Form):
+    questionnaire_name = forms.CharField(
+        label='ชื่อแบบทดสอบ',
+        max_length=255,
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุชื่อแบบทดสอบ',
+            'max_length': 'ชื่อแบบทดสอบต้องไม่เกิน 255 ตัวอักษร'
+        }
+    )
+    description = forms.CharField(
+        label='คำอธิบาย',
+        widget=forms.Textarea,
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุคำอธิบาย'
+        }
+    )
+
+class QuestionForm(forms.Form):
+    question_content = forms.CharField(
+        label='คำถาม',
+        widget=forms.Textarea,
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุคำถาม'
+        }
+    )
+
+class ChoiceForm(forms.Form):
+    response_text = forms.CharField(
+        label='ตัวเลือก',
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุตัวเลือก'
+        }
+    )
+    response_value = forms.IntegerField(
+        label='คะแนน',
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุคะแนน',
+            'invalid': 'คะแนนต้องเป็นตัวเลขเท่านั้น'
+        }
+    )
+
+    def clean_response_value(self):
+        value = self.cleaned_data['response_value']
+        if value < 0:
+            raise forms.ValidationError('คะแนนต้องไม่ต่ำกว่า 0')
+        return value
+
+class ResultForm(forms.Form):
+    score_low = forms.IntegerField(
+        label='คะแนนต่ำสุด',
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุคะแนนต่ำสุด',
+            'invalid': 'คะแนนต้องเป็นตัวเลขเท่านั้น'
+        }
+    )
+    score_high = forms.IntegerField(
+        label='คะแนนสูงสุด',
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุคะแนนสูงสุด',
+            'invalid': 'คะแนนต้องเป็นตัวเลขเท่านั้น'
+        }
+    )
+    stress_level = forms.CharField(
+        label='ระดับความเครียด',
+        max_length=255,
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุระดับความเครียด',
+            'max_length': 'ระดับความเครียดต้องไม่เกิน 255 ตัวอักษร'
+        }
+    )
+    result_description = forms.CharField(
+        label='คำอธิบายผล',
+        widget=forms.Textarea,
+        required=True,
+        error_messages={
+            'required': 'กรุณาระบุคำอธิบายผล'
+        }
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        score_low = cleaned_data.get('score_low')
+        score_high = cleaned_data.get('score_high')
+
+        if score_low is not None and score_high is not None:
+            if score_low >= score_high:
+                raise forms.ValidationError({
+                    'score_low': 'คะแนนต่ำสุดต้องน้อยกว่าคะแนนสูงสุด',
+                    'score_high': 'คะแนนสูงสุดต้องมากกว่าคะแนนต่ำสุด'
+                })
+            if score_low < 0:
+                raise forms.ValidationError({
+                    'score_low': 'คะแนนต้องไม่ต่ำกว่า 0'
+                })
+        return cleaned_data

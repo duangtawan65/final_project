@@ -3,7 +3,13 @@
 
 {% block main %}
 <div class="p-8 relative">
+    <div class="mb-4">
+            <a href="{% url 'chat:chat_history' %}" class="bg-[#B4A3CC] hover:bg-[#9B85BC] text-black px-6 py-2 rounded-lg shadow transition duration-200 inline-block">
+                ประวัติการแชท
+            </a>
+    </div>
     <div class="bg-[#D8CCE6] rounded-2xl overflow-hidden shadow-lg">
+
         <table class="w-full">
             <thead>
                 <tr class="bg-[#B4A3CC]">

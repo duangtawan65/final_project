@@ -124,26 +124,82 @@
 
         <!-- Practice Information -->
         <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
-            <h2 class="font-bold mb-4 text-gray-900">การปฏิบัติโดยสรุป</h2>
+           <h2 class="font-bold mb-4 text-gray-900">การปฏิบัติโดยสรุป</h2>
 
-            <div class="view-mode">
-                <p class="text-gray-900">{{ doctor.service_mode }}</p>
-                <div class="border-t pt-4 mt-4">
-                    <p class="font-medium text-gray-900">${{ doctor.session_rate }} ต่อ session</p>
-                </div>
-            </div>
+           <div class="view-mode">
+               <p class="text-gray-900">{{ doctor.service_mode }}</p>
+               <div class="border-t pt-4 mt-4">
+                   <p class="font-medium text-gray-900">${{ doctor.session_rate }} ต่อ session</p>
+               </div>
+           </div>
 
-            <div class="hidden edit-mode space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-900">รูปแบบการให้บริการ</label>
-                    {{ form.service_mode }}
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-900">ค่าบริการต่อครั้ง</label>
-                    {{ form.session_rate }}
-                </div>
-            </div>
+           <div class="hidden edit-mode space-y-4">
+               <div>
+                   <label class="block text-sm font-medium text-gray-900">รูปแบบการให้บริการ</label>
+                   {{ form.service_mode }}
+               </div>
+               <div>
+                   <label class="block text-sm font-medium text-gray-900">ค่าบริการต่อครั้ง</label>
+                   {{ form.session_rate }}
+               </div>
+           </div>
+
+           {% if request.user == doctor.user %}
+           <div class="mt-4">
+               <button onclick="showScheduleModal()"
+                       class="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                   จัดการตารางเวลา
+               </button>
+           </div>
+           {% endif %}
         </div>
+
+        {% if request.user == doctor.user %}
+        <!-- Schedule Modal -->
+        <div id="scheduleModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-gray-900">
+                <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-900">จัดการตารางเวลา</h3>
+                        <button onclick="closeScheduleModal()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">เลือกวันที่</label>
+                        <input type="date"
+                               id="unavailableDate"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                               min="{{ today|date:'Y-m-d' }}"
+                               required>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-3 mb-6">
+                        {% for hour in hours %}
+                            <button class="time-slot py-3 px-4 text-center rounded-lg border transition-colors duration-200 hover:bg-gray-50"
+                                    data-time="{{ hour }}"
+                                    onclick="toggleTimeSlot(this)">
+                                {{ hour }}
+                            </button>
+                        {% endfor %}
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button onclick="closeScheduleModal()"
+                                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                            ยกเลิก
+                        </button>
+                        <button onclick="saveSchedule()"
+                                class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200">
+                            บันทึก
+                        </button>
+                    </div>
+
+                    <div class="mt-4 text-sm text-gray-500">
+                        <p>* เวลาที่แสดงเป็นสีแดงคือเวลาที่ไม่ว่าง</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
 
         {% if is_authenticated and not is_doctor %}
         <!-- Button to Open Consultation Modal -->
@@ -179,10 +235,10 @@
                     {% for _ in range %}
                         {% with forloop.counter|add:8 as hour %}
                         <button
-                            onclick="selectTime('{{ hour }}:00')"
+                            onclick="selectTime('{% if forloop.counter|add:8 < 10 %}0{% endif %}{{ hour }}:00')"
                             class="time-slot py-2 px-4 rounded-lg border border-gray-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                         >
-                            {{ hour }}:00
+                            {% if forloop.counter|add:8 < 10 %}0{% endif %}{{ hour }}:00
                         </button>
                         {% endwith %}
                     {% endfor %}
@@ -198,11 +254,85 @@
         {% endif %}
     </div>
 </div>
+<!-- เพิ่มส่วนจัดการแบบทดสอบหลังจาก Right Section -->
+{% if request.user == doctor.user %}
+<div class="md:w-full mt-8">
+    <div class="bg-white rounded-lg p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-900">จัดการแบบทดสอบ</h2>
+            <a href="{% url 'create_questionnaire' %}" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                สร้างแบบทดสอบใหม่
+            </a>
+        </div>
+
+        <!-- ตารางแบบทดสอบ -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-gray-900">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ชื่อแบบทดสอบ</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คำอธิบาย</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for questionnaire in questionnaires %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ questionnaire.questionnaire_name }}</td>
+                        <td class="px-6 py-4">{{ questionnaire.description|truncatechars:50 }}</td>
+                        <td class="px-6 py-4">
+                            <button onclick="showHistoryModal('{{ questionnaire.id }}')" class="text-green-500 hover:text-green-700 mr-2">
+                                ดูประวัติ
+                            </button>
+                            <a href="{% url 'edit_questionnaire' questionnaire.id %}" class="text-yellow-500 hover:text-yellow-700">
+                                แก้ไข
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Modal สำหรับดูประวัติการทำแบบทดสอบ -->
+<div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-gray-900">
+    <div class="bg-white rounded-lg p-6 w-full max-w-4xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">ประวัติการทำแบบทดสอบ</h3>
+            <button onclick="closeHistoryModal()" class="text-gray-500 hover:text-gray-700">&times;</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="historyTable">
+                <!-- ประวัติจะถูกเพิ่มที่นี่ด้วย JavaScript -->
+            </table>
+        </div>
+        <div class="flex justify-end mt-4">
+            <button onclick="closeHistoryModal()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-900">
+                ปิด
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <script>
 let selectedDate = null;
 let selectedTime = null;
+let selectedTimeSlots = new Set();
 
+
+document.addEventListener('DOMContentLoaded', function() {
+    const consultationDateInput = document.getElementById('consultationDate');
+    if (consultationDateInput) {
+        consultationDateInput.addEventListener('change', function(e) {
+
+    });
+    }
+});
 function showConsultModal() {
     document.getElementById('consultModal').classList.remove('hidden');
     // Reset selections when opening modal
@@ -218,8 +348,26 @@ function hideConsultModal() {
 // เพิ่ม event listener สำหรับการเลือกวันที่
 document.getElementById('consultationDate').addEventListener('change', function(e) {
     selectedDate = e.target.value;
-    console.log("Selected Date:", selectedDate);
-    validateSelections();
+    console.log("Checking appointments for date:", selectedDate);
+
+    fetch(`/check-appointments/?date=${selectedDate}&doctor_id={{ doctor.id }}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log("Response:", data);
+            if (data.status === 'success') {
+                document.querySelectorAll('.time-slot').forEach(button => {
+                    const buttonTime = button.textContent.trim();
+                    if (data.booked_times.includes(buttonTime)) {
+                        button.disabled = true;
+                        button.classList.add('bg-red-100', 'cursor-not-allowed');
+                    } else {
+                        button.disabled = false;
+                        button.classList.remove('bg-red-100', 'cursor-not-allowed');
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Error:', error));
 });
 
 function selectTime(time) {
@@ -248,7 +396,7 @@ function validateSelections() {
 
 function submitConsultation() {
     if (selectedDate && selectedTime) {
-        window.location.href = `/create-appointment/?time=${selectedTime}&date=${selectedDate}&doctor_id={{ doctor.id }}`;
+         window.location.href = `/create-appointment/?time=${selectedTime}&date=${selectedDate}&doctor_id={{ doctor.id }}`
     } else {
         alert("กรุณาเลือกวันที่และเวลา");
     }
@@ -311,6 +459,153 @@ function saveProfile() {
             console.error(data.errors);
         }
     });
+}
+// Schedule Management
+
+function showScheduleModal() {
+    document.getElementById('scheduleModal').classList.remove('hidden');
+    const date = document.getElementById('unavailableDate').value;
+
+    if (!date) return;
+
+    fetch(`/load-schedule/?doctor_id={{ doctor.id }}&date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // รีเซ็ตปุ่มเวลา
+                document.querySelectorAll('.time-slot').forEach(button => {
+                    button.classList.remove('bg-red-100', 'text-white');
+                    // ลบ disabled
+                    // button.disabled = false;
+                });
+
+                // แสดงเวลาที่ไม่ว่าง
+                data.schedules.forEach(schedule => {
+                    const button = document.querySelector(`button[data-time="${schedule.time}"]`);
+                    if (button && !schedule.is_available) {
+                        button.classList.add('bg-red-100');
+                    }
+                });
+            }
+        });
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleModal').classList.add('hidden');
+    selectedTimeSlots.clear();
+}
+
+
+function toggleTimeSlot(button) {
+
+    const time = button.dataset.time;
+    button.classList.toggle('bg-red-100');
+
+    if (button.classList.contains('bg-red-100')) {
+        selectedTimeSlots.add(time); // เพิ่มเวลาในเซ็ต
+    } else {
+        selectedTimeSlots.delete(time); // เอาเวลาออกจากเซ็ต
+    }
+}
+
+function saveSchedule() {
+    const date = document.getElementById('unavailableDate').value;
+    if (!date) {
+        alert('กรุณาเลือกวันที่');
+        return;
+    }
+
+    const times = Array.from(selectedTimeSlots);
+
+    fetch('/save-schedule/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            date: date,
+            times: times,
+            doctor_id: '{{ doctor.id }}'
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('บันทึกสำเร็จ');
+                // โหลดสถานะเวลาหลังบันทึก
+                document.getElementById('unavailableDate').dispatchEvent(new Event('change'));
+            } else {
+                alert('เกิดข้อผิดพลาดในการบันทึก');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('เกิดข้อผิดพลาดในการบันทึก');
+        });
+}
+
+document.getElementById('unavailableDate').addEventListener('change', function() {
+    const date = this.value;
+    if (!date) return;
+
+    fetch(`/load-schedule/?doctor_id={{ doctor.id }}&date=${date}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.querySelectorAll('.time-slot').forEach(button => {
+                    const time = button.dataset.time;
+                    const schedule = data.schedules.find(s => s.time === time);
+                    if (schedule && !schedule.is_available) {
+                        button.classList.add('bg-red-100');
+                    } else {
+                        button.classList.remove('bg-red-100');
+                    }
+                });
+            }
+        });
+});
+
+function showHistoryModal(questionnaireId) {
+    document.getElementById('historyModal').classList.remove('hidden');
+
+    fetch(`/get-questionnaire-history/?questionnaire_id=${questionnaireId}`)
+        .then(response => response.json())
+        .then(data => {
+            const table = document.getElementById('historyTable');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ชื่อผู้ทำแบบทดสอบ
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            วันที่ทำ
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            คะแนน
+                        </th>
+                        <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            ผลการประเมิน
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.history.map(h => `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">${h.member_name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${h.date}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${h.score}</td>
+                            <td class="px-6 py-4">${h.result}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+        });
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').classList.add('hidden');
 }
 </script>
 

@@ -1,6 +1,9 @@
+import json
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.views import LogoutView
+from django.views.decorators.http import require_http_methods
+
 from .forms import *
 from django.contrib.auth.decorators import login_required,user_passes_test
 from .models import *
@@ -14,7 +17,11 @@ from datetime import datetime, timedelta
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
+from django.core.exceptions import PermissionDenied
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q
 from chat.models import ChatRoom
+
 
 
 
@@ -81,30 +88,14 @@ def profile_view(request):
     })
 
 
+@login_required
 def doctor_profile_view(request, id):
-    # ดึงข้อมูลโปรไฟล์ของแพทย์จากฐานข้อมูลโดยใช้ id ของ DoctorProfile
     doctor = get_object_or_404(DoctorProfile, user_id=id)
-
-    # สร้างฟอร์มสำหรับการแก้ไข
     form = DoctorProfileForm(instance=doctor)
-
     is_doctor = request.user.groups.filter(name='doctor').exists()
     is_authenticated = request.user.is_authenticated
 
-    if request.method == 'POST':
-        # ตรวจสอบว่าเป็นเจ้าของโปรไฟล์
-        if request.user != doctor.user:
-            return JsonResponse({'status': 'error', 'message': 'ไม่มีสิทธิ์แก้ไขโปรไฟล์นี้'})
-
-        # สร้างฟอร์มใหม่พร้อมข้อมูลจาก POST และไฟล์ที่ถูกอัปโหลด
-        form = DoctorProfileForm(request.POST, request.FILES, instance=doctor)
-
-        if form.is_valid():
-            form.save()
-            return JsonResponse({'status': 'success'})
-        return JsonResponse({'status': 'error', 'errors': form.errors})
-
-    return render(request, 'doctor_profile.html', {
+    context = {
         'doctor': doctor,
         'form': form,
         'is_doctor': is_doctor,
@@ -112,8 +103,27 @@ def doctor_profile_view(request, id):
         'today': datetime.now().date(),
         'max_date': datetime.now().date() + timedelta(days=30),
         'average_rating': doctor.get_average_rating(),
-        'review_count': doctor.get_review_count()
-    })
+        'hours': ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00",
+                  "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"],
+        'review_count': doctor.get_review_count(),
+    }
+
+    if request.user == doctor.user:
+        context['questionnaires'] = Questionnaire.objects.filter(
+            created_by=request.user
+        ).order_by('-created_at')
+
+    if request.method == 'POST':
+        if request.user != doctor.user:
+            return JsonResponse({'status': 'error', 'message': 'ไม่มีสิทธิ์แก้ไขโปรไฟล์นี้'})
+
+        form = DoctorProfileForm(request.POST, request.FILES, instance=doctor)
+        if form.is_valid():
+            form.save()
+            return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'error', 'errors': form.errors})
+
+    return render(request, 'doctor_profile.html', context)
 
 
 def doctor_list(request):
@@ -124,45 +134,98 @@ def doctor_list(request):
 
 # หน้าแรกสำหรับเลือกแบบทดสอบ
 def select_quiz_view(request):
-    questionnaires = Questionnaire.objects.all()
-    print(questionnaires)  # Add this to check if data is being fetched
+    if request.user.groups.filter(name='member').exists():
+        # ดึงแบบทดสอบของระบบและแบบทดสอบของ doctor ที่ member มี appointment
+        questionnaires = Questionnaire.objects.filter(
+            Q(is_system=True) |  # แบบทดสอบของระบบ
+            Q(created_by__doctorprofile__doctor_appointments__member__user=request.user)
+            # แบบทดสอบของ doctor ที่มี appointment
+        ).distinct()
+
+        # Debug prints
+        print("DEBUG - Member:", request.user)
+        print("DEBUG - Questionnaires count:", questionnaires.count())
+        print("DEBUG - Query:", questionnaires.query)
+    else:
+        questionnaires = Questionnaire.objects.all()
+
     return render(request, 'select_questions.html', {'questionnaires': questionnaires})
 
 
 
 # หน้าสำหรับแสดงคำถามของแบบทดสอบที่เลือก
-@login_required(login_url='login')  # Specify the URL to redirect to if not logged in
+@login_required(login_url='login')
 def take_quiz_view(request, questionnaire_id):
-    questionnaire = Questionnaire.objects.get(id=questionnaire_id)
-    questions = questionnaire.questions.all()  # Get all the questions in the quiz
+    # ดึงแบบทดสอบ
+    questionnaire = get_object_or_404(Questionnaire, id=questionnaire_id)
+
+    # เช็คว่าเป็น member หรือไม่
+    if not request.user.groups.filter(name='member').exists():
+        return redirect('home')
+
+    # เช็คสิทธิ์การเข้าถึง - ต้องเป็นแบบทดสอบของระบบ หรือมีการนัดหมายกับ doctor ที่สร้างแบบทดสอบ
+    if not (questionnaire.is_system or
+            Appointment.objects.filter(
+                member__user=request.user,
+                doctor__user=questionnaire.created_by
+            ).exists()):
+        return redirect('select_questions')
+
+    # ดึงคำถามทั้งหมดของแบบทดสอบ
+    questions = questionnaire.questions.all()
+
+    # กรณีส่งคำตอบ
     if request.method == 'POST':
         score = 0
+        # คำนวณคะแนนจากคำตอบที่เลือก
         for question in questions:
             selected_choice_id = request.POST.get(f'question_{question.id}')
             if selected_choice_id:
                 choice = Choice.objects.get(id=selected_choice_id)
-                score += choice.response_value  # Use response_value instead of score
+                score += choice.response_value
+
+        # ไปหน้าแสดงผลลัพธ์
         return redirect('questions_result', questionnaire_id=questionnaire.id, score=score)
-    return render(request, 'take_questions.html', {'questionnaire': questionnaire, 'questions': questions})
+
+    # กรณีเข้ามาดูแบบทดสอบ
+    return render(request, 'take_questions.html', {
+        'questionnaire': questionnaire,
+        'questions': questions
+    })
 
 
 
 # หน้าสำหรับแสดงผลลัพธ์หลังทำแบบทดสอบ
 def quiz_result_view(request, questionnaire_id, score):
-    questionnaire = Questionnaire.objects.get(id=questionnaire_id)
+    # ดึงแบบทดสอบ
+    questionnaire = get_object_or_404(Questionnaire, id=questionnaire_id)
 
+    # ค้นหาผลลัพธ์จากคะแนน
     result = Result.objects.filter(
         questionnaire=questionnaire,
         score_low__lte=score,
         score_high__gte=score
     ).first()
 
+    # กำหนดผลลัพธ์และระดับความเครียด
     if result:
         recommendation = result.result_description
         stress_level = result.stress_level
     else:
         recommendation = "No recommendation available for this score."
         stress_level = "Unknown"
+
+    # ตรวจสอบสิทธิ์
+    if not request.user.groups.filter(name='member').exists():
+        return redirect('home')
+
+    # เช็คสิทธิ์การเข้าถึง - เหมือนใน take_quiz_view
+    if not (questionnaire.is_system or
+            Appointment.objects.filter(
+                member__user=request.user,
+                doctor__user=questionnaire.created_by
+            ).exists()):
+        return redirect('select_questions')
 
     # บันทึกประวัติการทำแบบทดสอบ
     QuizHistory.objects.create(
@@ -173,6 +236,7 @@ def quiz_result_view(request, questionnaire_id, score):
         result_description=recommendation
     )
 
+    # แสดงผลลัพธ์
     return render(request, 'questions_result.html', {
         'questionnaire': questionnaire,
         'score': score,
@@ -185,21 +249,215 @@ def quiz_result_view(request, questionnaire_id, score):
 
 @login_required
 def quiz_history_view(request):
-    # ใช้ select_related เพื่อลดจำนวนการ query
-    histories = QuizHistory.objects.filter(user=request.user) \
-        .select_related('questionnaire', 'user') \
-        .order_by('-created_at')  # เรียงจากใหม่ไปเก่า
+    if request.user.groups.filter(name='member').exists():
+        # ถ้าเป็น member ดูได้แค่ประวัติตัวเอง
+        histories = QuizHistory.objects.filter(user=request.user)
+    elif request.user.groups.filter(name='doctor').exists():
+        # ถ้าเป็น doctor ดูได้เฉพาะประวัติของ member ที่เคย appointment
+        histories = QuizHistory.objects.filter(
+            user__profile__member_appointments__doctor__user=request.user
+        )
+    else:
+        return redirect('home')
 
-    return render(request, 'test_history.html', {
-        'histories': histories
-    })
+    histories = histories.select_related('questionnaire', 'user').order_by('-created_at')
+    return render(request, 'test_history.html', {'histories': histories})
+
+
 
 
 @login_required
-def doctor_dashboard(request):
-    if request.user.profile.role != 'doctor':
-        return redirect('home')  # Redirect if the user is not a doctor
-    return render(request, 'doctor_dashboard.html')
+@require_http_methods(["GET"])
+def get_questionnaire_history_view(request):
+    questionnaire_id = request.GET.get('questionnaire_id')
+    questionnaire = get_object_or_404(Questionnaire, id=questionnaire_id)
+
+    # ตรวจสอบสิทธิ์ก่อนดึงข้อมูล
+    if request.user != questionnaire.created_by and not request.user.groups.filter(name='doctor').exists():
+        return JsonResponse({'status': 'error', 'message': 'ไม่มีสิทธิ์ดูประวัติ'})
+
+    # ถ้าเป็น doctor ให้ดูได้เฉพาะประวัติของ member ที่เคย appointment
+    if request.user.groups.filter(name='doctor').exists():
+        histories = QuizHistory.objects.filter(
+            questionnaire=questionnaire,
+            user__profile__member_appointments__doctor__user=request.user
+        ).select_related('user').order_by('-created_at').distinct()
+    else:
+        histories = QuizHistory.objects.filter(
+            questionnaire=questionnaire
+        ).select_related('user').order_by('-created_at')
+
+    try:
+        history_data = [{
+            'member_name': f"{history.user.first_name} {history.user.last_name}",
+            'date': history.created_at.strftime('%Y-%m-%d %H:%M'),
+            'score': history.score,
+            'result': history.stress_level
+        } for history in histories]
+
+        return JsonResponse({
+            'status': 'success',
+            'history': history_data
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+
+@login_required
+@transaction.atomic
+def create_questionnaire_view(request):
+   if not request.user.groups.filter(name='doctor').exists():
+       return redirect('home')
+
+   if request.method == 'POST':
+       print("POST Data:", request.POST)  # Debug print
+       questionnaire_form = QuestionnaireForm(request.POST)
+
+       if questionnaire_form.is_valid():
+           try:
+               # สร้างแบบทดสอบ
+               questionnaire = Questionnaire.objects.create(
+                   questionnaire_name=questionnaire_form.cleaned_data['questionnaire_name'],
+                   description=questionnaire_form.cleaned_data['description'],
+                   created_by=request.user,
+                   is_system=False
+               )
+
+               # สร้างคำถามและตัวเลือก
+               questions = request.POST.getlist('questions[]')
+               for i in range(len(questions)):
+                   question = Question.objects.create(
+                       questionnaire=questionnaire,
+                       question_content=questions[i]
+                   )
+
+                   choices = request.POST.getlist(f'choices[{i+1}][]')
+                   values = request.POST.getlist(f'values[{i+1}][]')
+
+                   for choice_text, value in zip(choices, values):
+                       Choice.objects.create(
+                           question=question,
+                           response_text=choice_text,
+                           response_value=value
+                       )
+
+               # สร้างเกณฑ์การประเมิน
+               score_lows = request.POST.getlist('score_low[]')
+               score_highs = request.POST.getlist('score_high[]')
+               stress_levels = request.POST.getlist('stress_level[]')
+               descriptions = request.POST.getlist('result_description[]')
+
+               for i in range(len(score_lows)):
+                   Result.objects.create(
+                       questionnaire=questionnaire,
+                       score_low=score_lows[i],
+                       score_high=score_highs[i],
+                       stress_level=stress_levels[i],
+                       result_description=descriptions[i]
+                   )
+
+
+
+               messages.success(request, 'สร้างแบบทดสอบสำเร็จ')
+               return redirect('doctor_profile', id=request.user.id)
+
+           except Exception as e:
+               messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+               return redirect('create_questionnaire')
+
+       messages.error(request, 'กรุณากรอกข้อมูลให้ถูกต้อง')
+
+   return render(request, 'create_questionnaire.html')
+
+
+@login_required
+@transaction.atomic
+def edit_questionnaire_view(request, questionnaire_id):
+    questionnaire = get_object_or_404(Questionnaire, id=questionnaire_id)
+
+    if request.user != questionnaire.created_by:
+        messages.error(request, 'คุณไม่มีสิทธิ์แก้ไขแบบทดสอบนี้')
+        return redirect('doctor_profile', id=request.user.id)
+
+    if request.method == 'POST':
+        print("POST Data:", request.POST)  # Debug print
+        questionnaire_form = QuestionnaireForm(request.POST)
+
+        if questionnaire_form.is_valid():
+            try:
+                with transaction.atomic():
+                    # อัพเดทข้อมูลแบบทดสอบ
+                    questionnaire.questionnaire_name = questionnaire_form.cleaned_data['questionnaire_name']
+                    questionnaire.description = questionnaire_form.cleaned_data['description']
+                    questionnaire.save()
+
+                    # ลบคำถามและตัวเลือกเก่า
+                    questionnaire.questions.all().delete()
+
+                    # สร้างคำถามและตัวเลือกใหม่
+                    questions = request.POST.getlist('questions[]')
+                    for i in range(len(questions)):
+                        question = Question.objects.create(
+                            questionnaire=questionnaire,
+                            question_content=questions[i]
+                        )
+
+                        choices = request.POST.getlist(f'choices[{i + 1}][]')
+                        values = request.POST.getlist(f'values[{i + 1}][]')
+
+                        for choice_text, value in zip(choices, values):
+                            Choice.objects.create(
+                                question=question,
+                                response_text=choice_text,
+                                response_value=value
+                            )
+
+                    # ลบเกณฑ์การประเมินเก่า
+                    questionnaire.results.all().delete()
+
+                    # สร้างเกณฑ์การประเมินใหม่
+                    score_lows = request.POST.getlist('score_low[]')
+                    score_highs = request.POST.getlist('score_high[]')
+                    stress_levels = request.POST.getlist('stress_level[]')
+                    descriptions = request.POST.getlist('result_description[]')
+
+                    for i in range(len(score_lows)):
+                        Result.objects.create(
+                            questionnaire=questionnaire,
+                            score_low=score_lows[i],
+                            score_high=score_highs[i],
+                            stress_level=stress_levels[i],
+                            result_description=descriptions[i]
+                        )
+
+                messages.success(request, 'แก้ไขแบบทดสอบสำเร็จ')
+                return redirect('doctor_profile', id=request.user.id)
+
+            except Exception as e:
+                messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+                return redirect('edit_questionnaire', questionnaire_id=questionnaire_id)
+
+        messages.error(request, 'กรุณากรอกข้อมูลให้ถูกต้อง')
+
+    initial_data = {
+        'questionnaire_name': questionnaire.questionnaire_name,
+        'description': questionnaire.description
+    }
+    questionnaire_form = QuestionnaireForm(initial=initial_data)
+
+    context = {
+        'questionnaire': questionnaire,
+        'form': questionnaire_form,
+        'questions': questionnaire.questions.all().prefetch_related('choices'),
+        'results': questionnaire.results.all(),
+        'doctor': request.user.doctorprofile
+    }
+    return render(request, 'edit_questionnaire.html', context)
+
+
 
 
 def is_admin(user):
@@ -312,20 +570,24 @@ def create_appointment(request):
         time = request.GET.get('time')
         doctor_id = request.GET.get('doctor_id')
 
-        # เพิ่ม print เพื่อ debug
-        print(f"Received data: date={date}, time={time}, doctor_id={doctor_id}")
-
         try:
+            # เพิ่มการดึง DoctorProfile เพื่อใช้ user_id
+            doctor = DoctorProfile.objects.get(id=doctor_id)
             appointment_date = datetime.strptime(date, '%Y-%m-%d').date()
             appointment_time = datetime.strptime(time, '%H:%M').time()
 
-            print(f"Parsed date: {appointment_date}")
-            print(f"Parsed time: {appointment_time}")
+            # เช็คว่ามีการนัดในเวลานี้แล้วหรือไม่
+            existing_appointment = Appointment.objects.filter(
+                doctor_id=doctor_id,
+                appointment_date=appointment_date,
+                time=appointment_time
+            ).exists()
 
-            # เช็คข้อมูลก่อนสร้าง appointment
-            print(f"User profile: {request.user.profile}")
-            print(f"Doctor id: {doctor_id}")
+            if existing_appointment:
+                messages.error(request, 'เวลานี้มีการนัดหมายแล้ว')
+                return redirect('doctor_profile', id=doctor.user.id)
 
+            # ถ้าไม่มีการนัดซ้ำ จึงสร้าง appointment ใหม่
             appointment = Appointment.objects.create(
                 doctor_id=doctor_id,
                 member=request.user.profile,
@@ -334,15 +596,108 @@ def create_appointment(request):
                 service_mode='Online'
             )
 
-            print(f"Successfully created appointment: {appointment}")
+            # อัพเดทตารางเวลาหมอ
+            DoctorSchedule.objects.filter(
+                doctor_id=doctor_id,
+                date=appointment_date,
+                time=appointment_time
+            ).update(is_available=False)
+
+            messages.success(request, 'การนัดหมายสำเร็จ')
             return redirect('schedule')
 
         except Exception as e:
             print(f"Detailed error: {str(e)}")
+            messages.error(request, 'เกิดข้อผิดพลาดในการสร้างการนัดหมาย')
             return redirect('home')
 
     return redirect('home')
 
+
+def check_appointments(request):
+    date = request.GET.get('date')
+    doctor_id = request.GET.get('doctor_id')
+
+    try:
+        appointment_date = datetime.strptime(date, '%Y-%m-%d').date()
+
+        # ดึงเวลาที่ถูกจองจากทั้ง 2 ตาราง
+        booked_appointments = Appointment.objects.filter(
+            doctor_id=doctor_id,
+            appointment_date=appointment_date
+        ).values_list('time', flat=True)
+
+        unavailable_slots = DoctorSchedule.objects.filter(
+            doctor_id=doctor_id,
+            date=appointment_date,
+            is_available=False
+        ).values_list('time', flat=True)
+
+        # รวมเวลาที่ไม่ว่างทั้งหมด
+        unavailable_times = set([t.strftime('%H:%M') for t in booked_appointments] +
+                                [t.strftime('%H:%M') for t in unavailable_slots])
+
+        return JsonResponse({
+            'status': 'success',
+            'booked_times': list(unavailable_times)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+def load_schedule(request):
+    doctor_id = request.GET.get('doctor_id')
+    date = request.GET.get('date')
+    try:
+        schedules = DoctorSchedule.objects.filter(
+            doctor_id=doctor_id,
+            date=date
+        ).values_list('time', 'is_available', flat=False)
+
+        return JsonResponse({
+            'status': 'success',
+            'schedules': [{'time': t[0].strftime('%H:%M'), 'is_available': t[1]} for t in schedules]
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+@login_required
+def save_schedule(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        doctor = DoctorProfile.objects.get(id=data.get('doctor_id'))
+        date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+        times = data.get('times', [])
+
+        try:
+            # ดึงตารางเวลาที่มีอยู่เดิม
+            existing_schedules = DoctorSchedule.objects.filter(
+                doctor=doctor,
+                date=date,
+                is_available=False
+            ).values_list('time', flat=True)
+
+            # รวมเวลาที่มีอยู่เดิมกับเวลาใหม่
+            all_times = set([t.strftime('%H:%M') for t in existing_schedules])
+            all_times.update(times)  # เพิ่มเวลาใหม่เข้าไป
+
+            # สร้างหรืออัพเดทตารางเวลา
+            for time in all_times:
+                DoctorSchedule.objects.update_or_create(
+                    doctor=doctor,
+                    date=date,
+                    time=datetime.strptime(time, '%H:%M').time(),
+                    defaults={'is_available': False}
+                )
+
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @login_required
 def request_doctor_approval(request):
@@ -366,13 +721,17 @@ def request_doctor_approval(request):
         return redirect('home')
 
     if request.method == 'POST':
+        print("Received POST request:", request.POST)
         form = DoctorVerificationForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
+            print("Form is valid. Saving data...")
             doctor_request = form.save(commit=False)
             doctor_request.user = request.user
             doctor_request.save()
             messages.success(request, 'ส่งคำขอเรียบร้อยแล้ว')
             return redirect('home')
+        else:
+            print("Form is invalid:", form.errors)
     else:
         form = DoctorVerificationForm(user=request.user)
 
@@ -451,3 +810,65 @@ def handle_doctor_approval(request, request_id):
             messages.info(request, f'ปฏิเสธคำขอของ {approval_request.user.get_full_name()} เรียบร้อยแล้ว')
 
     return redirect('doctor_requests_list')
+
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FIXTURE_DIR = os.path.join(BASE_DIR, 'healmind', 'fixtures')
+
+with open(os.path.join(FIXTURE_DIR, 'thai_provinces.json'), encoding='utf-8') as f:
+    PROVINCES = json.load(f)
+
+with open(os.path.join(FIXTURE_DIR, 'thai_amphures.json'), encoding='utf-8') as f:
+    AMPHURES = json.load(f)
+
+with open(os.path.join(FIXTURE_DIR, 'thai_tambons.json'), encoding='utf-8') as f:
+    TAMBONS = json.load(f)
+
+
+def get_provinces(request):
+    try:
+        return JsonResponse(PROVINCES, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+def get_amphures(request):
+    province_name = request.GET.get('province')
+    if not province_name:
+        return JsonResponse([], safe=False)
+
+    # หาฟิลด์ province_id จาก province_name
+    province = next((p for p in PROVINCES if p['name_th'] == province_name), None)
+    if not province:
+        return JsonResponse([], safe=False)
+
+    province_id = province['id']  # ดึง province_id
+
+    # กรอง amphures โดยใช้ province_id
+    filtered_amphures = [
+        amphure for amphure in AMPHURES if amphure['province_id'] == province_id
+    ]
+
+    return JsonResponse(filtered_amphures, safe=False)
+
+def get_tambons(request):
+    amphure_name = request.GET.get('amphure')
+    if not amphure_name:
+        return JsonResponse([], safe=False)
+
+
+    amphure = next((a for a in AMPHURES if a['name_th'] == amphure_name), None)
+    if not amphure:
+        return JsonResponse([], safe=False)
+
+    amphure_id = amphure['id']
+
+
+    filtered_tambons = [
+        tambon for tambon in TAMBONS if tambon['amphure_id'] == amphure_id
+    ]
+
+    return JsonResponse(filtered_tambons, safe=False)
+
+

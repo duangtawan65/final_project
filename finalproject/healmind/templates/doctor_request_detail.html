@@ -37,6 +37,37 @@
                     </div>
                 </div>
             </div>
+            <!-- ข้อมูลที่อยู่ -->
+            <div class="border-b pb-4">
+                <h2 class="text-lg font-semibold mb-4 text-gray-900">ข้อมูลที่อยู่</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">ที่อยู่</p>
+                        <p class="text-lg text-gray-900">{{ request.address }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">ตำบล</p>
+                        <p class="text-lg text-gray-900">{{ request.tambon }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">อำเภอ</p>
+                        <p class="text-lg text-gray-900">{{ request.amphure }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">จังหวัด</p>
+                        <p class="text-lg text-gray-900">{{ request.province }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">รหัสไปรษณีย์</p>
+                        <p class="text-lg text-gray-900">{{ request.postal_code }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">เบอร์ติดต่อ</p>
+                        <p class="text-lg text-gray-900">{{ request.phone }}</p>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- เอกสารแนบ -->
             <div class="border-b pb-4">

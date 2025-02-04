@@ -101,3 +101,5 @@ class ChatRoomHistory(models.Model):
         if self.rating:
             return '★' * self.rating + '☆' * (5 - self.rating)
         return None
+
+

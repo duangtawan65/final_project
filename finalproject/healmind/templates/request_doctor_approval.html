@@ -44,10 +44,22 @@
                     {{ form.address }}
                 </div>
                 <div>
-                    {{ form.district }}
+
+                    <select id="id_province" name="province" class="w-full px-4 py-2 border rounded-lg text-gray-900">
+                        <option value="">เลือกจังหวัด</option>
+                    </select>
                 </div>
                 <div>
-                    {{ form.province }}
+
+                    <select id="id_district" name="amphure" class="w-full px-4 py-2 border rounded-lg text-gray-900" disabled>
+                        <option value="">เลือกอำเภอ</option>
+                    </select>
+                </div>
+                <div>
+
+                    <select id="id_tambon" name="tambon" class="w-full px-4 py-2 border rounded-lg text-gray-900" disabled>
+                        <option value="">เลือกตำบล</option>
+                    </select>
                 </div>
             </div>
 
@@ -84,4 +96,97 @@
         </div>
     </form>
 </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const provinceSelect = document.getElementById("id_province");
+    const amphureSelect = document.getElementById("id_district");
+    const tambonSelect = document.getElementById("id_tambon");
+
+    if (!provinceSelect || !amphureSelect || !tambonSelect) {
+        console.error("Element ไม่พบใน DOM");
+        return;
+    }
+
+    provinceSelect.addEventListener("change", function () {
+        const province = this.value;
+        amphureSelect.innerHTML = '<option value="">เลือกอำเภอ</option>';
+        tambonSelect.innerHTML = '<option value="">เลือกตำบล</option>';
+        amphureSelect.disabled = true;
+        tambonSelect.disabled = true;
+
+        if (province) {
+            amphureSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+            fetch(`/api/amphures/?province=${encodeURIComponent(province)}`)
+                .then(response => response.json())
+                .then(data => {
+                    amphureSelect.disabled = false;
+                    amphureSelect.innerHTML = '<option value="">เลือกอำเภอ</option>';
+                    data.forEach(amphure => {
+                        const option = document.createElement("option");
+                        option.value = amphure.name_th;
+                        option.textContent = amphure.name_th;
+                        amphureSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching amphures:", error);
+                    alert("ไม่สามารถโหลดข้อมูลอำเภอได้");
+                });
+        }
+    });
+
+    amphureSelect.addEventListener("change", function () {
+        const amphure = this.value;
+        tambonSelect.innerHTML = '<option value="">เลือกตำบล</option>';
+        tambonSelect.disabled = true;
+
+        if (amphure) {
+            tambonSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+            fetch(`/api/tambons/?amphure=${encodeURIComponent(amphure)}`)
+                .then(response => response.json())
+                .then(data => {
+                    tambonSelect.disabled = false;
+                    tambonSelect.innerHTML = '<option value="">เลือกตำบล</option>';
+                    data.forEach(tambon => {
+                        const option = document.createElement("option");
+                        option.value = tambon.name_th;
+                        option.textContent = tambon.name_th;
+                        tambonSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching tambons:", error);
+                    alert("ไม่สามารถโหลดข้อมูลตำบลได้");
+                });
+        }
+    });
+});
+document.addEventListener("DOMContentLoaded", function () {
+    console.log("JavaScript Loaded"); // เพื่อเช็คว่าโค้ดนี้โหลดจริง
+
+    const provinceSelect = document.getElementById("id_province");
+    if (!provinceSelect) {
+        console.error("Province Select Element Not Found"); // Debug หากไม่มี element
+        return;
+    }
+
+    console.log("Province Select Element Found");
+
+    fetch('/api/provinces/')
+        .then(response => response.json())
+        .then(data => {
+            console.log("Provinces Data:", data); // Log ข้อมูลที่ fetch มา
+            data.forEach(province => {
+                const option = document.createElement("option");
+                option.value = province.name_th;
+                option.textContent = province.name_th;
+                provinceSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching provinces:", error); // Log error
+        });
+});
+</script>
+
 {% endblock %}

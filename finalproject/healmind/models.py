@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.conf import settings
 from django.apps import apps
+from django.utils import timezone
 
 
 # Create your models here.
@@ -62,6 +63,9 @@ class QuestionnaireAdmin(admin.ModelAdmin):
 class Questionnaire(models.Model):
     questionnaire_name = models.CharField(max_length=255)
     description = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    is_system = models.BooleanField(default=False)  # สำหรับแบบทดสอบของระบบ
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.questionnaire_name
@@ -107,6 +111,9 @@ class QuizHistory(models.Model):
         ordering = ['-created_at']
 
 
+
+
+
 class Appointment(models.Model):
     doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='doctor_appointments')
     member = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='member_appointments')
@@ -124,16 +131,26 @@ class Appointment(models.Model):
 
 
 
+class DoctorSchedule(models.Model):
+    doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='schedules')
+    date = models.DateField()
+    time = models.TimeField()
+    is_available = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ['doctor', 'date', 'time']
+
+
 
 
 class DoctorApprovalRequest(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
-    # ข้อมูลจาก form
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     title = models.CharField(max_length=10, blank=True)
     work_location = models.CharField(max_length=255, blank=True)
     address = models.CharField(max_length=255, blank=True)
-    district = models.CharField(max_length=100, blank=True)
+    tambon = models.CharField(max_length=100, blank=True)
+    amphure = models.CharField(max_length=100, blank=True)
     province = models.CharField(max_length=100, blank=True)
     postal_code = models.CharField(max_length=10, blank=True)
     phone = models.CharField(max_length=20, blank=True)
@@ -158,3 +175,5 @@ class DoctorApprovalRequest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+

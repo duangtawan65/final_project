@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="min-h-screen bg-[#FFFFD7] pt-20">
+   <article class="max-w-4xl mx-auto px-4">
+       <!-- Header Section -->
+       <header class="mb-8">
+           <h1 class="text-4xl font-bold text-gray-900 mb-4">{{ article.title }}</h1>
+
+           <!-- Cover Image -->
+           {% if article.cover_image %}
+           <div class="rounded-xl overflow-hidden shadow-lg mb-6">
+               <img src="{{ article.cover_image.url }}"
+                    alt="{{ article.title }}"
+                    class="w-full h-[400px] object-cover">
+           </div>
+           {% endif %}
+
+
+
+       </header>
+
+       <!-- Main Content -->
+       <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+           <div class="prose prose-lg max-w-none">
+               {{ article.content|linebreaks }}
+           </div>
+       </div>
+
+       <!-- Footer -->
+       <footer class="bg-white rounded-lg shadow p-6 mb-8">
+           <div class="divide-y divide-gray-200">
+               <div class="py-3">
+                   <h5 class="text-gray-500">เขียนโดย</h5>
+                   <p class="text-gray-900">{{ doctor_profile.title }} {{ article.author.get_full_name }}</p>
+               </div>
+               <div class="py-3">
+                   <h5 class="text-gray-500">วันที่เผยแพร่</h5>
+                   <p class="text-gray-900">{{ article.created_at|date:"d M Y" }}</p>
+               </div>
+
+           </div>
+       </footer>
+
+       <!-- Back Button -->
+       <div class="flex justify-center mb-8">
+           <a href="{% url 'article:article_list' %}"
+              class="inline-flex items-center px-6 py-3 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition duration-200">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                   <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+               </svg>
+               กลับไปหน้ารายการบทความ
+           </a>
+       </div>
+   </article>
+</div>
+
+<style>
+   /* Custom styles for article content */
+   .prose {
+       color: #374151;
+       line-height: 1.8;
+   }
+   .prose p {
+       margin-bottom: 1.5em;
+   }
+   .prose h2 {
+       font-size: 1.5em;
+       font-weight: 600;
+       margin-top: 2em;
+       margin-bottom: 1em;
+       color: #1F2937;
+   }
+   .prose h3 {
+       font-size: 1.25em;
+       font-weight: 600;
+       margin-top: 1.5em;
+       margin-bottom: 0.8em;
+       color: #1F2937;
+   }
+</style>
+{% endblock %}

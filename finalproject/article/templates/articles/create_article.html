@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="container mx-auto px-4 py-8 max-w-4xl text-gray-900">
+    <h2 class="text-3xl font-bold mb-8 text-gray-800">สร้างบทความใหม่</h2>
+
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- ชื่อบทความ -->
+            <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 mb-2">ชื่อบทความ</label>
+                {{ form.title }}
+            </div>
+
+            <!-- รูปปกบทความ -->
+            <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 mb-2">รูปปกบทความ</label>
+                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-blue-500 cursor-pointer">
+                    <div class="space-y-1 text-center">
+                        <!-- Preview Image Container -->
+                        <div id="imagePreview" class="hidden mb-4">
+                            <img id="preview" src="#" alt="preview" class="mx-auto h-48 object-cover rounded-lg"/>
+                            <button type="button" id="removeImage" class="mt-2 text-sm text-red-600 hover:text-red-800">
+                                ลบรูปภาพ
+                            </button>
+                        </div>
+
+                        <!-- Upload Icon (จะซ่อนเมื่อมีรูปภาพ) -->
+                        <div id="uploadIcon" class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                <path d="M24 8v32m16-16H8" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <div class="flex flex-col items-center text-sm text-gray-600">
+                                <label for="id_cover_image" class="cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
+                                    อัพโหลดรูปภาพ
+                                    {{ form.cover_image }}
+                                </label>
+                                <p class="text-xs text-gray-500 mt-1">คลิกหรือลากไฟล์มาวาง</p>
+                                <p class="text-xs text-gray-500">PNG, JPG, GIF ไม่เกิน 10MB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                #id_cover_image {
+                    opacity: 0;
+                    width: 0.1px;
+                    height: 0.1px;
+                    position: absolute;
+                }
+            </style>
+
+
+            <!-- คำอธิบายย่อ -->
+            <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 mb-2">คำอธิบายย่อ</label>
+                {{ form.description }}
+                <p class="mt-1 text-sm text-gray-500">เขียนคำอธิบายสั้นๆ เพื่อให้ผู้อ่านเข้าใจเนื้อหาคร่าวๆ</p>
+            </div>
+
+            <!-- เนื้อหา -->
+            <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 mb-2">เนื้อหา</label>
+                {{ form.content }}
+            </div>
+
+            <!-- ปุ่มกดต่างๆ -->
+            <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                <a href="{% url 'article:article_list' %}"
+                   class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    ยกเลิก
+                </a>
+                <button type="submit"
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                    สร้างบทความ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const coverImage = document.getElementById('id_cover_image');
+        const uploadArea = coverImage.closest('.form-group');
+        const imagePreview = document.getElementById('imagePreview');
+        const preview = document.getElementById('preview');
+        const uploadIcon = document.getElementById('uploadIcon');
+        const removeButton = document.getElementById('removeImage');
+
+        // คลิกที่พื้นที่เพื่ออัพโหลด
+        uploadArea.addEventListener('click', function(e) {
+            if (e.target !== removeButton) {  // ไม่ทริกเกอร์เมื่อคลิกปุ่มลบ
+                coverImage.click();
+            }
+        });
+
+        // แสดงภาพพรีวิว
+        coverImage.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                    uploadIcon.classList.add('hidden');
+                };
+
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        // ลบรูปภาพ
+        removeButton.addEventListener('click', function(e) {
+            e.stopPropagation();  // ป้องกันการทริกเกอร์การอัพโหลด
+            coverImage.value = '';  // ล้างค่าไฟล์
+            imagePreview.classList.add('hidden');
+            uploadIcon.classList.remove('hidden');
+        });
+
+        // Drag and Drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('border-blue-500');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('border-blue-500');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('border-blue-500');
+            coverImage.files = e.dataTransfer.files;
+            // ทริกเกอร์ change event เพื่อแสดงพรีวิว
+            const event = new Event('change');
+            coverImage.dispatchEvent(event);
+        });
+    });
+</script>
+
+{% endblock %}

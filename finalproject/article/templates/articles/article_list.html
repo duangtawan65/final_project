@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block main %}
+<div class="min-h-screen bg-[#FFFFD7] pt-20 px-4">
+    <div class="container mx-auto max-w-7xl">
+        <!-- Header Section -->
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-3xl font-bold text-gray-800">บทความทั้งหมด</h2>
+            {% if user.groups.django %}
+            <a href="{% url 'article:create_article' %}"
+               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-200">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                สร้างบทความใหม่
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Articles Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for article in articles %}
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition duration-300 transform hover:-translate-y-1">
+                <!-- Article Image -->
+                {% if article.cover_image %}
+                <div class="relative h-48 overflow-hidden">
+                    <img src="{{ article.cover_image.url }}"
+                         alt="{{ article.title }}"
+                         class="w-full h-full object-cover">
+                </div>
+                {% endif %}
+
+                <!-- Article Content -->
+                <div class="p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2 line-clamp-2">
+                        {{ article.title }}
+                    </h3>
+
+                    <p class="text-gray-600 mb-4 line-clamp-3">
+                        {{ article.description|truncatewords:30 }}
+                    </p>
+
+                    <!-- Author Info -->
+                    {% with doctor_profile=article.get_author_profile %}
+                    <div class="flex items-center mb-4">
+                        {% if doctor_profile.profile_image %}
+                        <img src="{{ doctor_profile.profile_image.url }}"
+                             alt="{{ doctor_profile.user.username }}"
+                             class="w-10 h-10 rounded-full object-cover border-2 border-gray-200">
+                        {% endif %}
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-800">
+                                {{ doctor_profile.title }} {{ article.author.get_full_name }}
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                {{ article.created_at|date:"d M Y" }}
+                            </p>
+                        </div>
+                    </div>
+                    {% endwith %}
+
+                    <!-- Read More Button -->
+                    <div class="pt-4 border-t border-gray-100">
+                        <a href="{% url 'article:article_detail' article.pk %}"
+                           class="inline-block w-full text-center py-2 px-4 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition duration-200">
+                            อ่านเพิ่มเติม
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-12">
+                <p class="text-gray-500 text-lg">ยังไม่มีบทความในขณะนี้</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
