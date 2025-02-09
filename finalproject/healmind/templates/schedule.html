@@ -59,7 +59,7 @@
                                         {% if user.groups.all.0.name == 'doctor' %}
                                             {{ appointment.member.user.username }}
                                         {% else %}
-                                            {{ appointment.doctor.name }}
+                                            {{ appointment.doctor.title }} {{ appointment.doctor.user.first_name }} {{ appointment.doctor.user.last_name }}
                                         {% endif %}
                                     </h3>
                                     <div class="flex items-center space-x-3 text-sm text-gray-900">

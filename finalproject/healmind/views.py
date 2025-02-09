@@ -10,7 +10,7 @@ from .models import *
 from django.contrib.auth.models import User, Group
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
-from django.utils.timezone import  now, timedelta, localtime
+from django.utils.timezone import  now,  localtime
 from django.shortcuts import render , redirect , HttpResponse,get_object_or_404
 from django.http import JsonResponse
 from datetime import datetime, timedelta
@@ -21,7 +21,10 @@ from django.core.exceptions import PermissionDenied
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from chat.models import ChatRoom
-
+import stripe
+from django.urls import reverse
+from decimal import Decimal
+from django.db.models import Sum
 
 
 
@@ -135,15 +138,21 @@ def doctor_list(request):
 # หน้าแรกสำหรับเลือกแบบทดสอบ
 def select_quiz_view(request):
     if request.user.groups.filter(name='member').exists():
-        # ดึงแบบทดสอบของระบบและแบบทดสอบของ doctor ที่ member มี appointment
+        # หา appointments ของ member ก่อน
+        member_appointments = Appointment.objects.filter(member__user=request.user)
+
+        # แล้วค่อยหา doctors จาก appointments
+        doctor_ids = member_appointments.values_list('doctor_id', flat=True)
+
+        # จากนั้นหาแบบทดสอบ
         questionnaires = Questionnaire.objects.filter(
             Q(is_system=True) |  # แบบทดสอบของระบบ
-            Q(created_by__doctorprofile__doctor_appointments__member__user=request.user)
-            # แบบทดสอบของ doctor ที่มี appointment
+            Q(created_by_id__in=doctor_ids)  # แบบทดสอบของ doctors ที่มี appointment
         ).distinct()
 
         # Debug prints
         print("DEBUG - Member:", request.user)
+        print("DEBUG - Doctor IDs:", list(doctor_ids))
         print("DEBUG - Questionnaires count:", questionnaires.count())
         print("DEBUG - Query:", questionnaires.query)
     else:
@@ -458,6 +467,78 @@ def edit_questionnaire_view(request, questionnaire_id):
     return render(request, 'edit_questionnaire.html', context)
 
 
+@login_required
+def system_questionnaire_stats(request):
+    # ดึงแบบทดสอบของระบบ
+    system_questionnaires = Questionnaire.objects.filter(is_system=True)
+    stats = []
+
+    for questionnaire in system_questionnaires:
+        try:
+            # จำนวนผู้ทำแบบทดสอบ
+            total_responses = QuizHistory.objects.filter(
+                questionnaire=questionnaire,
+                is_completed=True
+            ).count()
+
+            # คะแนนเฉลี่ย
+            avg_score = QuizHistory.objects.filter(
+                questionnaire=questionnaire,
+                is_completed=True
+            ).aggregate(Avg('score'))['score__avg']
+
+            # ระดับความเครียดที่พบบ่อย
+            common_stress = QuizHistory.objects.filter(
+                questionnaire=questionnaire,
+                is_completed=True
+            ).values('stress_level').annotate(
+                count=Count('id')
+            ).order_by('-count').first()
+
+            # แนวโน้มรายเดือน
+            six_months_ago = datetime.now() - timedelta(days=180)
+            monthly_trends = QuizHistory.objects.filter(
+                questionnaire=questionnaire,
+                is_completed=True,
+                created_at__gte=six_months_ago
+            ).annotate(
+                month=TruncMonth('created_at')
+            ).values('month').annotate(
+                avg_score=Avg('score'),
+                count=Count('id')
+            ).order_by('month')
+
+            # จำนวนผู้ที่มีความเครียดสูง
+            high_stress_count = QuizHistory.objects.filter(
+                questionnaire=questionnaire,
+                is_completed=True,
+                stress_level='สูง'  # ปรับตามค่าที่คุณใช้ในระบบ
+            ).count()
+
+            high_stress_percentage = (high_stress_count / total_responses * 100) if total_responses > 0 else 0
+
+            # เตรียมข้อมูลสำหรับส่งไป template
+            stats.append({
+                'name': questionnaire.questionnaire_name,
+                'total_responses': total_responses,
+                'avg_score': round(avg_score, 2) if avg_score else 0,
+                'common_stress': common_stress['stress_level'] if common_stress else 'ไม่มีข้อมูล',
+                'monthly_trends': list(monthly_trends),
+                'high_stress_percentage': round(high_stress_percentage, 2)
+            })
+
+        except Exception as e:
+            print(f"Error processing questionnaire {questionnaire.id}: {str(e)}")
+            continue
+
+    context = {
+        'stats': stats,
+        'page_title': 'สถิติแบบทดสอบสุขภาพจิต',
+        'total_questionnaires': len(stats)
+    }
+
+    return render(request, 'questionnaire_stats.html', context)
+
 
 
 def is_admin(user):
@@ -508,6 +589,45 @@ def admin_dashboard_view(request):
         return redirect("admin_dashboard")
 
     return render(request, "admin_dashboard.html", {"users": users})
+
+def admin_statistics_view(request):
+    # จำนวนสมาชิก (Profile)
+    total_profiles = Profile.objects.count()
+    # จำนวนแพทย์ (DoctorProfile)
+    total_doctors = DoctorProfile.objects.count()
+    # จำนวนแบบทดสอบ (Questionnaire)
+    total_questionnaires = Questionnaire.objects.count()
+    # จำนวนการนัดหมาย (Appointment)
+    total_appointments = Appointment.objects.count()
+
+    # นับการนัดหมายที่สำเร็จ
+    completed_appointments = Appointment.objects.filter(payment_status='paid').count()
+    # นับการนัดหมายที่ถูกยกเลิก
+    canceled_appointments = Appointment.objects.filter(payment_status__in=['canceled', 'expired']).count()
+
+    # หารายได้รวม (สมมติว่าคิดจาก session_rate ของ doctor ที่ผูกกับ Appointment ที่จ่ายสำเร็จ)
+    paid_appointments = Appointment.objects.filter(payment_status='paid')
+    total_revenue = Decimal('0.00')
+    for appt in paid_appointments:
+        if appt.doctor.session_rate:
+            total_revenue += appt.doctor.session_rate
+
+    # ถ้าคุณหัก 20% เป็นค่าระบบ
+    system_fee_total = total_revenue * Decimal('0.20')
+    doctor_fee_total = total_revenue - system_fee_total
+
+    context = {
+        'total_profiles': total_profiles,
+        'total_doctors': total_doctors,
+        'total_questionnaires': total_questionnaires,
+        'total_appointments': total_appointments,
+        'completed_appointments': completed_appointments,
+        'canceled_appointments': canceled_appointments,
+        'total_revenue': total_revenue,
+        'system_fee_total': system_fee_total,
+        'doctor_fee_total': doctor_fee_total,
+    }
+    return render(request, 'admin_statistics.html', context)
 
 
 def is_user_online(user):
@@ -571,12 +691,11 @@ def create_appointment(request):
         doctor_id = request.GET.get('doctor_id')
 
         try:
-            # เพิ่มการดึง DoctorProfile เพื่อใช้ user_id
             doctor = DoctorProfile.objects.get(id=doctor_id)
             appointment_date = datetime.strptime(date, '%Y-%m-%d').date()
             appointment_time = datetime.strptime(time, '%H:%M').time()
 
-            # เช็คว่ามีการนัดในเวลานี้แล้วหรือไม่
+            # ตรวจสอบการจองซ้ำ
             existing_appointment = Appointment.objects.filter(
                 doctor_id=doctor_id,
                 appointment_date=appointment_date,
@@ -587,31 +706,129 @@ def create_appointment(request):
                 messages.error(request, 'เวลานี้มีการนัดหมายแล้ว')
                 return redirect('doctor_profile', id=doctor.user.id)
 
-            # ถ้าไม่มีการนัดซ้ำ จึงสร้าง appointment ใหม่
+            # สร้าง Appointment
             appointment = Appointment.objects.create(
-                doctor_id=doctor_id,
-                member=request.user.profile,
+                doctor=doctor,
+                member=request.user.profile,  # สมมติว่ามี user.profile
                 appointment_date=appointment_date,
                 time=appointment_time,
-                service_mode='Online'
+                service_mode='Online',
+                payment_status='pending',
             )
 
-            # อัพเดทตารางเวลาหมอ
+            # อัปเดตตารางเวลาหมอ (DoctorSchedule) เป็นไม่ว่าง
             DoctorSchedule.objects.filter(
                 doctor_id=doctor_id,
                 date=appointment_date,
                 time=appointment_time
             ).update(is_available=False)
 
-            messages.success(request, 'การนัดหมายสำเร็จ')
-            return redirect('schedule')
+            # หลังสร้างเสร็จ => redirect ไปหน้าชำระเงิน
+            return redirect('create_payment', appointment_id=appointment.id)
 
         except Exception as e:
-            print(f"Detailed error: {str(e)}")
+            print("Error:", e)
             messages.error(request, 'เกิดข้อผิดพลาดในการสร้างการนัดหมาย')
             return redirect('home')
 
     return redirect('home')
+
+def create_payment(request, appointment_id):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    doctor = appointment.doctor
+
+    # สมมติ doctor.session_rate = 100 บาท
+    session_rate = doctor.session_rate or 0
+    # คำนวณค่าบริการที่ระบบหัก 20%
+    system_fee = session_rate * Decimal('0.20')  # ส่วนของระบบ
+    doctor_fee = session_rate - system_fee  # ส่วนที่แพทย์จะได้รับจริง
+
+    # คุณอาจเลือกให้ user จ่ายเต็ม session_rate หรือเฉพาะ doctor_fee ก็ได้
+    price_to_pay = session_rate  # ถ้าอยากให้ผู้ปรึกษาจ่าย 80 บาท (จาก 100)
+    # หรือถ้าต้องการเก็บเต็ม 100 แต่ส่วน 20 เป็นรายได้ระบบ => price_to_pay = session_rate
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=['card'],   # หรือ 'promptpay' ถ้าเปิดใช้ PromptPay
+        line_items=[{
+            'price_data': {
+                'currency': 'thb',
+                'unit_amount': int(price_to_pay * 100),  # บาท => สตางค์
+                'product_data': {
+                    'name': f'ค่าปรึกษา {doctor.user.username}',
+                },
+            },
+            'quantity': 1,
+        }],
+        mode='payment',
+        success_url=request.build_absolute_uri(reverse('payment_success', args=[appointment.id])),
+        cancel_url=request.build_absolute_uri(reverse('payment_cancel', args=[appointment.id])),
+    )
+
+    # บันทึก session.id ลงใน Appointment
+    appointment.stripe_payment_id = session.id
+    appointment.save()
+
+    # ส่ง Session ID กลับไป (หรือจะ Redirect ทันทีด้วยก็ได้)
+    return redirect(session.url, code=303)
+
+def payment_success(request, appointment_id):
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    appointment.payment_status = 'paid'
+    appointment.save()
+    messages.success(request, 'ชำระเงินสำเร็จ')
+    return redirect('schedule')  # หรือหน้าไหนตามต้องการ
+
+def payment_cancel(request, appointment_id):
+    appointment = get_object_or_404(Appointment, id=appointment_id)
+    # ลบออกเลย (หรือเปลี่ยนเป็น appointment.payment_status='canceled')
+    appointment.delete()
+
+    # ปลดล็อกเวลาหมอ
+    DoctorSchedule.objects.filter(
+        doctor_id=appointment.doctor.id,
+        date=appointment.appointment_date,
+        time=appointment.time
+    ).update(is_available=True)
+
+    messages.error(request, 'การชำระเงินถูกยกเลิก')
+    return redirect('home')
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE', '')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+
+        if event.type == 'checkout.session.completed':
+            session = event.data.object
+            appointment = Appointment.objects.get(stripe_payment_id=session.id)
+            appointment.payment_status = 'paid'
+            appointment.save()
+            # ส่งอีเมลหรืออัปเดตอื่น ๆ
+
+        elif event.type == 'checkout.session.expired':
+            session = event.data.object
+            appointment = Appointment.objects.get(stripe_payment_id=session.id)
+            appointment.payment_status = 'expired'
+            appointment.save()
+            # ปลดล็อกเวลาหมอ ฯลฯ
+
+        return HttpResponse(status=200)
+
+    except ValueError:
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError:
+        return HttpResponse(status=400)
+    except Appointment.DoesNotExist:
+        return HttpResponse(status=404)
 
 
 def check_appointments(request):

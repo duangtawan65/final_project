@@ -66,14 +66,25 @@ class Command(BaseCommand):
                 user.groups.add(doctor_group)
 
         ws_questionnaire = wb['questionnaire']
-        for row in ws_questionnaire.iter_rows(min_row=2, values_only=True):  # Skipping header row
-            questionnaire_id, name, description = row
+        for row in ws_questionnaire.iter_rows(min_row=2, values_only=True):
+            questionnaire_id, name, description, is_system, created_by_id = row
 
+            # ถ้ามี created_by_id ให้หา user object
+            created_by = None
+            if created_by_id:
+                try:
+                    created_by = User.objects.get(id=created_by_id)
+                except User.DoesNotExist:
+                    print(f"Warning: User with id {created_by_id} not found")
 
             questionnaire, created = Questionnaire.objects.get_or_create(
-                id=questionnaire_id,  # This is the field we are looking to match
-                defaults={'questionnaire_name': name, 'description': description}
-                # This will set the fields if the record doesn't exist
+                id=questionnaire_id,
+                defaults={
+                    'questionnaire_name': name,
+                    'description': description,
+                    'is_system': bool(is_system),  # แปลงเป็น boolean
+                    'created_by': created_by
+                }
             )
 
         ws_questions = wb['question']

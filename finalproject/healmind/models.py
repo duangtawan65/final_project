@@ -5,7 +5,9 @@ from django.contrib.auth.admin import UserAdmin
 from django.conf import settings
 from django.apps import apps
 from django.utils import timezone
-
+from django.db.models import Count, Avg
+from django.db.models.functions import TruncMonth
+from datetime import datetime, timedelta
 
 # Create your models here.
 class Profile(models.Model):
@@ -71,6 +73,8 @@ class Questionnaire(models.Model):
         return self.questionnaire_name
 
 
+
+
 # Model for each question in the questionnaire
 class Question(models.Model):
     questionnaire = models.ForeignKey(Questionnaire, on_delete=models.CASCADE, related_name='questions')
@@ -103,9 +107,11 @@ class QuizHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     questionnaire = models.ForeignKey(Questionnaire, on_delete=models.CASCADE)
     score = models.IntegerField()
+    result = models.ForeignKey(Result, on_delete=models.SET_NULL, null=True)  # เพิ่มแค่ส่วนนี้
     stress_level = models.CharField(max_length=255)
     result_description = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)  # คงไว้ตามเดิม
+    is_completed = models.BooleanField(default=False)  # เพิ่มถ้าจำเป็น
 
     class Meta:
         ordering = ['-created_at']
@@ -113,21 +119,30 @@ class QuizHistory(models.Model):
 
 
 
-
 class Appointment(models.Model):
-    doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='doctor_appointments')
-    member = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='member_appointments')
+    doctor = models.ForeignKey('DoctorProfile', on_delete=models.CASCADE)
+    member = models.ForeignKey('Profile', on_delete=models.CASCADE)
     appointment_date = models.DateField()
     time = models.TimeField()
     service_mode = models.CharField(max_length=50, default='Online')
     status = models.CharField(max_length=20, default='Pending')
+
+    payment_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('pending', 'รอชำระเงิน'),
+            ('paid', 'ชำระเงินแล้ว'),
+            ('canceled', 'ยกเลิก'),
+            ('expired', 'หมดเวลาชำระเงิน'),
+        ],
+        default='pending'
+    )
+    stripe_payment_id = models.CharField(max_length=100, blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        ordering = ['appointment_date', 'time']
-
     def __str__(self):
-        return f"{self.member.user.username} - {self.doctor.name} - {self.appointment_date} {self.time}"
+        return f"{self.member.user.username} - {self.doctor.user.username} - {self.appointment_date} {self.time}"
 
 
 

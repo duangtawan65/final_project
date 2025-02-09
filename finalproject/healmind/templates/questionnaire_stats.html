@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block main %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">
+                สถิติแบบทดสอบสุขภาพจิต
+            </h1>
+        </div>
+
+        {% for stat in stats %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-900">
+                    {{ stat.name }}
+                </h3>
+            </div>
+
+            <div class="px-4 py-5 sm:p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- จำนวนผู้ทำแบบทดสอบ -->
+                    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                        <div class="p-5">
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                จำนวนผู้ทำแบบทดสอบ
+                            </dt>
+                            <dd class="mt-1 text-3xl font-semibold text-gray-900">
+                                {{ stat.total_responses }}
+                            </dd>
+                        </div>
+                    </div>
+
+                    <!-- คะแนนเฉลี่ย -->
+                    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                        <div class="p-5">
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                คะแนนเฉลี่ย
+                            </dt>
+                            <dd class="mt-1 text-3xl font-semibold text-gray-900">
+                                {{ stat.avg_score }}
+                            </dd>
+                        </div>
+                    </div>
+
+                    <!-- ระดับความเครียดที่พบบ่อย -->
+                    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                        <div class="p-5">
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                ระดับความเครียดที่พบบ่อย
+                            </dt>
+                            <dd class="mt-1 text-3xl font-semibold text-gray-900">
+                                {{ stat.common_stress }}
+                            </dd>
+                        </div>
+                    </div>
+
+                    <!-- เปอร์เซ็นต์ความเครียดสูง -->
+                    <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+                        <div class="p-5">
+                            <dt class="text-sm font-medium text-gray-500 truncate">
+                                เปอร์เซ็นต์ความเครียดสูง
+                            </dt>
+                            <dd class="mt-1 text-3xl font-semibold text-gray-900">
+                                {{ stat.high_stress_percentage }}%
+                            </dd>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- แนวโน้มรายเดือน -->
+                <div class="mt-8">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">แนวโน้มรายเดือน</h4>
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <div class="h-64" id="chart-{{ forloop.counter }}">
+                            <!-- Chart จะถูกเพิ่มด้วย JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- เพิ่ม Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    {% for stat in stats %}
+    // สร้างกราฟแนวโน้มรายเดือน
+    const monthlyData{{ forloop.counter }} = {{ stat.monthly_trends|safe }};
+    const ctx{{ forloop.counter }} = document.getElementById('chart-{{ forloop.counter }}').getContext('2d');
+    new Chart(ctx{{ forloop.counter }}, {
+        type: 'line',
+        data: {
+            labels: monthlyData{{ forloop.counter }}.map(item => {
+                const date = new Date(item.month);
+                return date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+            }),
+            datasets: [{
+                label: 'คะแนนเฉลี่ย',
+                data: monthlyData{{ forloop.counter }}.map(item => item.avg_score),
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endfor %}
+</script>
+{% endblock %}
