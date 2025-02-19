@@ -1,55 +1,79 @@
 {% extends 'base.html' %}
 
 {% block main %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen flex justify-center items-center">
-    <div class="w-full max-w-2xl bg-white shadow-lg rounded-lg p-6">
-        <h1 class="text-2xl font-bold text-center text-gray-700">💬 Chat with AI</h1>
+<div class="bg-[#fcf5d3] min-h-screen py-8">
+    <div class="max-w-2xl mx-auto">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                <h1 class="text-xl text-gray-700">Chat with AI</h1>
+            </div>
 
-        <div id="chat-box" class="h-96 overflow-y-auto border p-4 rounded mt-4 bg-gray-50 text-gray-900">
-            {% if request.session.chat_history %}
-                {% for message in request.session.chat_history %}
-                    {% if message.role == "user" %}
+            <div id="chat-box" class="max-h-[500px] overflow-y-auto rounded-lg bg-[#f8f9fa] p-4 mb-4">
+                <div id="messages">
+                    {% if user_message %}
+                        <!-- ข้อความผู้ใช้ -->
                         <div class="flex justify-end mb-2">
-                            <div class="bg-blue-500 text-white px-4 py-2 rounded-lg max-w-xs text-gray-900">
-                                {{ message.content }}
+                            <div class="bg-blue-500 text-white p-3 rounded-lg inline-block max-w-[80%]">
+                                {{ user_message }}
                             </div>
                         </div>
-                    {% else %}
-                        <div class="flex justify-start mb-2">
-                            <div class="bg-gray-300 px-4 py-2 rounded-lg max-w-xs text-gray-900">
-                                {{ message.content }}
+
+                        <!-- ข้อความ AI -->
+                        {% if response_text %}
+                            <div class="flex justify-start mb-2">
+                                <div class="bg-gray-200 text-gray-800 p-3 rounded-lg inline-block max-w-[80%]">
+                                    {{ response_text }}
+                                </div>
                             </div>
-                        </div>
+                        {% endif %}
                     {% endif %}
-                {% endfor %}
-            {% else %}
-                <p class="text-center text-gray-500">เริ่มต้นแชทกับ AI ได้เลย!</p>
-            {% endif %}
+                </div>
+
+                <!-- Loading indicator -->
+                <div id="loading" class="hidden">
+                    <div class="flex justify-center p-2">
+                        <div class="bg-gray-100 px-4 py-2 rounded-lg">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                                <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="chat-form" method="POST" class="flex gap-2">
+                {% csrf_token %}
+                <input type="text"
+                       name="message"
+                       id="message-input"
+                       placeholder="พิมพ์ข้อความ..."
+                       required
+                       class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button type="submit"
+                        class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition">
+                    ส่ง
+                </button>
+            </form>
         </div>
-
-        <form method="POST" class="mt-4 flex">
-            {% csrf_token %}
-            <input type="text" name="message" placeholder="พิมพ์ข้อความ..." required
-                   class="flex-grow border px-4 py-2 rounded-l-lg focus:outline-none text-gray-900">
-            <button type="submit"
-                    class="bg-blue-500 text-white px-6 py-2 rounded-r-lg hover:bg-blue-600 transition">
-                ส่ง
-            </button>
-        </form>
     </div>
+</div>
 
-    <script>
-        // Scroll ไปที่ข้อความล่าสุดอัตโนมัติ
-        document.addEventListener("DOMContentLoaded", function () {
-            var chatBox = document.getElementById("chat-box");
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
-    </script>
-</body>
+<script>
+document.getElementById('chat-form').addEventListener('submit', function(e) {
+    const loading = document.getElementById('loading');
+    const input = document.getElementById('message-input');
+
+    // แสดง loading
+    loading.classList.remove('hidden');
+});
+
+// Scroll to bottom
+document.addEventListener('DOMContentLoaded', function() {
+    const chatBox = document.getElementById('chat-box');
+    chatBox.scrollTop = chatBox.scrollHeight;
+});
+</script>
 {% endblock %}

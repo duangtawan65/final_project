@@ -33,6 +33,7 @@ class DoctorProfile(models.Model):
     service_mode = models.CharField(max_length=255, blank=True)
     contact = models.CharField(max_length=255, blank=True)
     profile_image = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
+    stripe_account_id = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} Doctor Profile"

@@ -46,3 +46,7 @@ def article_detail(request, pk):
         'article': article,
         'doctor_profile': doctor_profile
     })
+
+
+
+

@@ -12,7 +12,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
 from django.utils.timezone import  now,  localtime
 from django.shortcuts import render , redirect , HttpResponse,get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseNotAllowed
 from datetime import datetime, timedelta
 from django.contrib import messages
 from django.db import transaction
@@ -24,8 +24,10 @@ from chat.models import ChatRoom
 import stripe
 from django.urls import reverse
 from decimal import Decimal
-from django.db.models import Sum
-
+from django.conf import settings
+from django.db.models import Count, Sum, F
+from django.db.models.functions import TruncMonth
+from django.core.paginator import Paginator
 
 
 
@@ -48,6 +50,8 @@ def home_view(request):
 
     # If not authenticated, redirect to the login page
     return redirect('login')  # Redirect to login page if the user is not logged in
+
+
 # Register view
 def register_view(request):
     if request.method == 'POST':
@@ -547,10 +551,41 @@ def is_admin(user):
 
 @user_passes_test(is_admin)
 def admin_dashboard_view(request):
-    users = User.objects.all()
+    # Get filters from request
+    group_filter = request.GET.get('group', '')
+    search_query = request.GET.get('search', '')
 
-    # Assign roles and calculate online status and formatted login
-    for user in users:
+    # Base queryset
+    users = User.objects.all().order_by('-date_joined')
+
+    # Apply filters
+    if group_filter:
+        if group_filter == 'admin':
+            users = users.filter(is_staff=True, is_superuser=True)
+        else:
+            users = users.filter(groups__name=group_filter)
+
+    # Apply search
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query)
+        )
+
+    # Calculate statistics
+    total_users = User.objects.count()
+    total_doctors = User.objects.filter(groups__name='doctor').count()
+    total_members = User.objects.filter(groups__name='member').count()
+    total_admins = User.objects.filter(is_staff=True, is_superuser=True).count()
+
+    # Pagination
+    paginator = Paginator(users, 10)  # 10 users per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # Process each user in current page
+    for user in page_obj:
+        # Set role attribute
         if user.is_staff and user.is_superuser:
             user.role = 'admin'
         elif user.groups.filter(name='doctor').exists():
@@ -560,35 +595,54 @@ def admin_dashboard_view(request):
         else:
             user.role = 'member'
 
-
+        # Set online status
         user.is_online = is_user_online(user)
 
+        # Format last login
+        if user.last_login:
+            user.formatted_last_login = localtime(user.last_login).strftime('%d/%m/%Y %H:%M:%S')
+        else:
+            user.formatted_last_login = 'ไม่เคยเข้าสู่ระบบ'
 
-        user.formatted_last_login = (
-            localtime(user.last_login).strftime('%d/%m/%Y %H:%M:%S')
-        )
-
+    # Handle POST requests
     if request.method == "POST":
         action = request.POST.get("action")
         user_id = request.POST.get("user_id")
-        user = User.objects.get(id=user_id)
+        try:
+            user = User.objects.get(id=user_id)
+            if action == "change_group":  # Changed from change_role
+                new_group = request.POST.get("group")  # Changed from role
+                # Reset permissions
+                user.groups.clear()
+                user.is_staff = False
+                user.is_superuser = False
 
-        if action == "change_role":
-            new_role = request.POST.get("role")
-            user.groups.clear()
-            if new_role in ['member', 'doctor']:
-                group, created = Group.objects.get_or_create(name=new_role)
-                user.groups.add(group)
-            if new_role == "admin":
-                user.is_staff = True
-                user.is_superuser = True
+                # Apply new group/permissions
+                if new_group in ['member', 'doctor']:
+                    group, created = Group.objects.get_or_create(name=new_group)
+                    user.groups.add(group)
+                elif new_group == "admin":
+                    user.is_staff = True
+                    user.is_superuser = True
                 user.save()
-        elif action == "delete_user":
-            user.delete()
+            elif action == "delete_user":
+                user.delete()
+        except User.DoesNotExist:
+            messages.error(request, 'ไม่พบผู้ใช้งานที่ระบุ')
 
         return redirect("admin_dashboard")
 
-    return render(request, "admin_dashboard.html", {"users": users})
+    context = {
+        'users': page_obj,
+        'group_filter': group_filter,
+        'search_query': search_query,
+        'total_users': total_users,
+        'total_doctors': total_doctors,
+        'total_members': total_members,
+        'total_admins': total_admins,
+    }
+
+    return render(request, "admin_dashboard.html", context)
 
 def admin_statistics_view(request):
     # จำนวนสมาชิก (Profile)
@@ -616,6 +670,29 @@ def admin_statistics_view(request):
     system_fee_total = total_revenue * Decimal('0.20')
     doctor_fee_total = total_revenue - system_fee_total
 
+    # เพิ่มส่วนนี้สำหรับข้อมูลกราฟรายเดือน
+    twelve_months_ago = datetime.now() - timedelta(days=365)
+
+    monthly_data = Appointment.objects.filter(
+        created_at__gte=twelve_months_ago,
+        payment_status='paid'
+    ).annotate(
+        month=TruncMonth('created_at')
+    ).values('month').annotate(
+        appointment_count=Count('id'),
+        monthly_revenue=Sum(F('doctor__session_rate'))
+    ).order_by('month')
+
+    # เตรียมข้อมูลสำหรับ Chart.js
+    months = []
+    appointment_counts = []
+    revenues = []
+
+    for data in monthly_data:
+        months.append(data['month'].strftime('%B %Y'))
+        appointment_counts.append(data['appointment_count'])
+        revenues.append(float(data['monthly_revenue'] if data['monthly_revenue'] else 0))
+
     context = {
         'total_profiles': total_profiles,
         'total_doctors': total_doctors,
@@ -626,15 +703,24 @@ def admin_statistics_view(request):
         'total_revenue': total_revenue,
         'system_fee_total': system_fee_total,
         'doctor_fee_total': doctor_fee_total,
+        'months': months,
+        'appointment_counts': appointment_counts,
+        'revenues': revenues,
     }
     return render(request, 'admin_statistics.html', context)
 
 
 def is_user_online(user):
-    if user.last_login:
-        return user.last_login >= now() - timedelta(minutes=5)
-    return False
+    sessions = Session.objects.filter(expire_date__gte=timezone.now())
+    user_id_list = []
 
+    # เก็บ user_id จากทุก session ที่ยังไม่หมดอายุ
+    for session in sessions:
+        data = session.get_decoded()
+        user_id_list.append(data.get('_auth_user_id', None))
+
+    # เช็คว่า user_id อยู่ใน active sessions หรือไม่
+    return str(user.id) in user_id_list
 
 def schedule_view(request):
     if hasattr(request.user, 'doctorprofile'):
@@ -733,28 +819,26 @@ def create_appointment(request):
 
     return redirect('home')
 
+
+
 def create_payment(request, appointment_id):
     stripe.api_key = settings.STRIPE_SECRET_KEY
-
     appointment = get_object_or_404(Appointment, id=appointment_id)
     doctor = appointment.doctor
 
-    # สมมติ doctor.session_rate = 100 บาท
-    session_rate = doctor.session_rate or 0
-    # คำนวณค่าบริการที่ระบบหัก 20%
-    system_fee = session_rate * Decimal('0.20')  # ส่วนของระบบ
-    doctor_fee = session_rate - system_fee  # ส่วนที่แพทย์จะได้รับจริง
+    if not doctor.stripe_account_id:
+        messages.error(request, 'แพทย์ยังไม่ได้เชื่อมต่อบัญชีธนาคาร')
+        return redirect('doctor_profile', id=doctor.user.id)
 
-    # คุณอาจเลือกให้ user จ่ายเต็ม session_rate หรือเฉพาะ doctor_fee ก็ได้
-    price_to_pay = session_rate  # ถ้าอยากให้ผู้ปรึกษาจ่าย 80 บาท (จาก 100)
-    # หรือถ้าต้องการเก็บเต็ม 100 แต่ส่วน 20 เป็นรายได้ระบบ => price_to_pay = session_rate
+    session_rate = doctor.session_rate or 0
+    system_fee = session_rate * Decimal('0.20')  # 20%
 
     session = stripe.checkout.Session.create(
-        payment_method_types=['card'],   # หรือ 'promptpay' ถ้าเปิดใช้ PromptPay
+        payment_method_types=['card'],
         line_items=[{
             'price_data': {
                 'currency': 'thb',
-                'unit_amount': int(price_to_pay * 100),  # บาท => สตางค์
+                'unit_amount': int(session_rate * 100),
                 'product_data': {
                     'name': f'ค่าปรึกษา {doctor.user.username}',
                 },
@@ -764,13 +848,17 @@ def create_payment(request, appointment_id):
         mode='payment',
         success_url=request.build_absolute_uri(reverse('payment_success', args=[appointment.id])),
         cancel_url=request.build_absolute_uri(reverse('payment_cancel', args=[appointment.id])),
+        payment_intent_data={
+            'application_fee_amount': int(system_fee * 100),
+            'transfer_data': {
+                'destination': doctor.stripe_account_id,
+            },
+        }
     )
 
-    # บันทึก session.id ลงใน Appointment
     appointment.stripe_payment_id = session.id
     appointment.save()
 
-    # ส่ง Session ID กลับไป (หรือจะ Redirect ทันทีด้วยก็ได้)
     return redirect(session.url, code=303)
 
 def payment_success(request, appointment_id):
@@ -812,14 +900,18 @@ def stripe_webhook(request):
             appointment = Appointment.objects.get(stripe_payment_id=session.id)
             appointment.payment_status = 'paid'
             appointment.save()
-            # ส่งอีเมลหรืออัปเดตอื่น ๆ
 
         elif event.type == 'checkout.session.expired':
             session = event.data.object
             appointment = Appointment.objects.get(stripe_payment_id=session.id)
             appointment.payment_status = 'expired'
             appointment.save()
-            # ปลดล็อกเวลาหมอ ฯลฯ
+
+            DoctorSchedule.objects.filter(
+                doctor_id=appointment.doctor.id,
+                date=appointment.appointment_date,
+                time=appointment.time
+            ).update(is_available=True)
 
         return HttpResponse(status=200)
 
@@ -829,6 +921,144 @@ def stripe_webhook(request):
         return HttpResponse(status=400)
     except Appointment.DoesNotExist:
         return HttpResponse(status=404)
+
+
+
+
+@login_required
+def doctor_payment_settings(request):
+    try:
+        doctor = request.user.doctorprofile
+        context = {
+            'doctor': doctor,
+            'total_earnings': Decimal('0'),
+            'monthly_earnings': Decimal('0'),
+            'total_consultations': 0,
+            'recent_transfers': []
+        }
+
+        if doctor.stripe_account_id:
+            # ดึงข้อมูล Stripe Account
+            account = stripe.Account.retrieve(doctor.stripe_account_id)
+            transfers = stripe.Transfer.list(
+                destination=doctor.stripe_account_id,
+                limit=10,
+                expand=['data.destination']
+            )
+            print("Transfers:", transfers)
+
+            # แปลงข้อมูล transfers
+            formatted_transfers = [{
+                'created': datetime.fromtimestamp(transfer.created),
+                'amount': float(transfer.amount) / 100,  # แปลงจากสตางค์เป็นบาท
+                'status': 'โอนเงินสำเร็จ' if not transfer.reversed else 'ยกเลิก'
+            } for transfer in transfers.data]
+
+            # คำนวณรายได้ทั้งหมด
+            appointments = Appointment.objects.filter(
+                doctor=doctor,
+                payment_status='paid'
+            )
+            total_earnings = sum(doctor.session_rate for appointment in appointments)
+
+            # คำนวณรายได้เดือนนี้
+            first_day_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0)
+            monthly_appointments = appointments.filter(
+                appointment_date__gte=first_day_of_month
+            )
+            monthly_earnings = sum(doctor.session_rate for appointment in monthly_appointments)
+
+            # จำนวนการปรึกษาทั้งหมด
+            total_consultations = appointments.count()
+
+            context.update({
+                'account_status': 'active' if account.payouts_enabled else 'pending',
+                'total_earnings': total_earnings * Decimal('0.8'),
+                'monthly_earnings': monthly_earnings * Decimal('0.8'),
+                'total_consultations': total_consultations,
+                'recent_transfers': formatted_transfers  # ใช้ข้อมูลที่แปลงแล้ว
+            })
+
+        return render(request, 'doctor_payment_settings.html', context)
+
+    except Exception as e:
+        print(f"Error in payment settings: {str(e)}")
+        messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+        return redirect('home')
+
+
+@login_required
+def stripe_payout_settings(request):
+    try:
+        doctor = request.user.doctorprofile
+        if not doctor.stripe_account_id:
+            messages.error(request, 'กรุณาเชื่อมต่อบัญชี Stripe ก่อน')
+            return redirect('doctor_payment_settings')
+
+        # สร้าง Account Link แทน Login Link
+        account_link = stripe.AccountLink.create(
+            account=doctor.stripe_account_id,
+            refresh_url=request.build_absolute_uri('/stripe/payout-settings/'),
+            return_url=request.build_absolute_uri('/payment-settings/'),
+            type='account_onboarding'
+        )
+        return redirect(account_link.url)
+
+    except Exception as e:
+        print("Error:", str(e))
+        messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+        return redirect('doctor_payment_settings')
+
+@login_required
+def disconnect_stripe(request):
+    """ยกเลิกการเชื่อมต่อ Stripe Account"""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+
+    try:
+        doctor = request.user.doctorprofile
+        if doctor.stripe_account_id:
+            # ยกเลิกการเชื่อมต่อใน Stripe
+            stripe.Account.delete(doctor.stripe_account_id)
+
+            # ลบ stripe_account_id ในฐานข้อมูล
+            doctor.stripe_account_id = None
+            doctor.save()
+
+            messages.success(request, 'ยกเลิกการเชื่อมต่อ Stripe สำเร็จ')
+
+        return redirect('doctor_payment_settings')
+
+    except Exception as e:
+        messages.error(request, f'เกิดข้อผิดพลาด: {str(e)}')
+        return redirect('doctor_payment_settings')
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+@login_required
+def stripe_connect_onboarding(request):
+    try:
+        doctor = request.user.doctorprofile
+        if not doctor.stripe_account_id:
+            account = stripe.Account.create(
+                type='standard',
+                country='TH',
+                email=request.user.email
+            )
+            doctor.stripe_account_id = account.id
+            doctor.save()
+
+        account_link = stripe.AccountLink.create(
+            account=doctor.stripe_account_id,
+            refresh_url=request.build_absolute_uri('/stripe/connect/onboarding/'),
+            return_url=request.build_absolute_uri('/payment-settings/'),
+            type='account_onboarding'
+        )
+        return redirect(account_link.url)
+    except Exception as e:
+        print("Error:", str(e))
+        return redirect('doctor_payment_settings')
 
 
 def check_appointments(request):
@@ -1069,11 +1299,11 @@ def get_amphures(request):
 
     return JsonResponse(filtered_amphures, safe=False)
 
+
 def get_tambons(request):
     amphure_name = request.GET.get('amphure')
     if not amphure_name:
         return JsonResponse([], safe=False)
-
 
     amphure = next((a for a in AMPHURES if a['name_th'] == amphure_name), None)
     if not amphure:
@@ -1081,9 +1311,14 @@ def get_tambons(request):
 
     amphure_id = amphure['id']
 
-
+    # กรองตำบลและเพิ่ม zip_code
     filtered_tambons = [
-        tambon for tambon in TAMBONS if tambon['amphure_id'] == amphure_id
+        {
+            **tambon,
+            'zip_code': tambon.get('zip_code', '')  # เพิ่ม zip_code จาก thai_tambons.json
+        }
+        for tambon in TAMBONS
+        if tambon['amphure_id'] == amphure_id
     ]
 
     return JsonResponse(filtered_tambons, safe=False)

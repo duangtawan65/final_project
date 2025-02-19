@@ -39,6 +39,12 @@ urlpatterns = [
     path('payment/cancel/<int:appointment_id>/', views.payment_cancel, name='payment_cancel'),
     path('stripe/webhook/', views.stripe_webhook, name='stripe_webhook'),
 
+    path('payment-settings/', views.doctor_payment_settings, name='doctor_payment_settings'),
+    path('stripe/payout-settings/', views.stripe_payout_settings, name='stripe_payout_settings'),
+    path('stripe/disconnect/', views.disconnect_stripe, name='disconnect_stripe'),
+    path('stripe/connect/onboarding/', views.stripe_connect_onboarding, name='stripe_connect_onboarding'),
+
+
     path('request-doctor/', views.request_doctor_approval, name='request_doctor'),
     path('admin/doctor-requests/', views.doctor_approval_list, name='doctor_requests_list'),
     path('admin/doctor-requests/<int:request_id>/approve/', views.handle_doctor_approval, name='handle_doctor_approval'),

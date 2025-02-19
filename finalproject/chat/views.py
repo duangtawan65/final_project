@@ -96,31 +96,16 @@ model = AutoModelForCausalLM.from_pretrained(MODEL_NAME)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model.to(device)
 
+
 def chat_view(request):
-    response_text = ""
-
-    # เมื่อผู้ใช้เข้าหน้าใหม่ ให้เคลียร์ประวัติการแชท
-    request.session.pop("chat_history", None)
-
     if request.method == "POST":
         form = ChatForm(request.POST)
 
         if form.is_valid():
             user_message = form.cleaned_data["message"]
 
-            # เริ่มแชทใหม่ ถ้าไม่มี chat_history
-            if "chat_history" not in request.session:
-                request.session["chat_history"] = []
-
-            # บันทึกข้อความของผู้ใช้
-            request.session["chat_history"].append({"role": "user", "content": user_message})
-
             # เตรียมอินพุตสำหรับโมเดล
             inputs = tokenizer(user_message, return_tensors="pt")
-
-            # ใช้ GPU ถ้ามี ไม่งั้นใช้ CPU
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            model.to(device)
             inputs = {k: v.to(device) for k, v in inputs.items()}
 
             # ให้โมเดลตอบกลับ
@@ -128,13 +113,16 @@ def chat_view(request):
                 output = model.generate(**inputs, max_length=100)
                 response_text = tokenizer.decode(output[0], skip_special_tokens=True)
 
-            # บันทึกข้อความของ AI
-            request.session["chat_history"].append({"role": "assistant", "content": response_text})
-
-            # อัปเดต session
-            request.session.modified = True
+            # ส่งทั้งข้อความผู้ใช้และคำตอบกลับไป
+            return render(request, "chat.html", {
+                "form": ChatForm(),
+                "user_message": user_message,
+                "response_text": response_text
+            })
 
     else:
         form = ChatForm()
 
-    return render(request, "chat.html", {"form": form, "response_text": response_text})
+    return render(request, "chat.html", {"form": form})
+
+

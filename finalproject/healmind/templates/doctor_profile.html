@@ -36,6 +36,7 @@
                 {% endif %}
             </div>
 
+
             <!-- Basic Info -->
             <div class="flex-1">
                 {% if request.user == doctor.user %}
@@ -150,6 +151,15 @@
                        class="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
                    จัดการตารางเวลา
                </button>
+
+               <!-- เพิ่มปุ่มจัดการการเงิน -->
+               <a href="{% url 'doctor_payment_settings' %}"
+                   class="block w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-center">
+                    จัดการการเงินและการรับชำระ
+                    {% if not doctor.stripe_account_id %}
+                    <span class="inline-block ml-2 px-2 py-1 text-xs bg-red-500 rounded-full">ต้องตั้งค่า</span>
+                    {% endif %}
+                </a>
            </div>
            {% endif %}
         </div>

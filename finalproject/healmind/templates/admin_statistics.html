@@ -71,5 +71,91 @@
             </div>
         </div>
     </div>
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- กราฟจำนวนนัดหมาย -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">จำนวนนัดหมายรายเดือน</h2>
+            <canvas id="appointmentChart" class="w-full" style="height: 300px;"></canvas>
+        </div>
+
+        <!-- กราฟรายได้ -->
+        <div class="bg-white p-4 rounded-lg shadow">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">รายได้รายเดือน</h2>
+            <canvas id="revenueChart" class="w-full" style="height: 300px;"></canvas>
+        </div>
+    </div>
 </div>
+<!-- เพิ่ม Chart.js และสคริปต์สร้างกราฟ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// กราฟจำนวนนัดหมาย
+const appointmentCtx = document.getElementById('appointmentChart').getContext('2d');
+new Chart(appointmentCtx, {
+    type: 'line',
+    data: {
+        labels: {{ months|safe }},
+        datasets: [{
+            label: 'จำนวนนัดหมาย',
+            data: {{ appointment_counts|safe }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'จำนวนนัดหมายรายเดือน'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'จำนวนนัดหมาย'
+                }
+            }
+        }
+    }
+});
+
+// กราฟรายได้
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: {{ months|safe }},
+        datasets: [{
+            label: 'รายได้ (บาท)',
+            data: {{ revenues|safe }},
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.1,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            title: {
+                display: true,
+                text: 'รายได้รายเดือน'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                title: {
+                    display: true,
+                    text: 'รายได้ (บาท)'
+                }
+            }
+        }
+    }
+});
+</script>
 {% endblock %}

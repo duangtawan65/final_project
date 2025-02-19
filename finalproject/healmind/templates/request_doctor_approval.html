@@ -101,16 +101,35 @@ document.addEventListener("DOMContentLoaded", function () {
     const provinceSelect = document.getElementById("id_province");
     const amphureSelect = document.getElementById("id_district");
     const tambonSelect = document.getElementById("id_tambon");
+    const postalCodeInput = document.getElementById("id_postal_code");
 
     if (!provinceSelect || !amphureSelect || !tambonSelect) {
         console.error("Element ไม่พบใน DOM");
         return;
     }
 
+    // โหลดข้อมูลจังหวัด
+    fetch('/api/provinces/')
+        .then(response => response.json())
+        .then(data => {
+            console.log("Provinces Data:", data);
+            data.forEach(province => {
+                const option = document.createElement("option");
+                option.value = province.name_th;
+                option.textContent = province.name_th;
+                provinceSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error("Error fetching provinces:", error);
+        });
+
+    // Event listener สำหรับการเปลี่ยนจังหวัด
     provinceSelect.addEventListener("change", function () {
         const province = this.value;
         amphureSelect.innerHTML = '<option value="">เลือกอำเภอ</option>';
         tambonSelect.innerHTML = '<option value="">เลือกตำบล</option>';
+        if (postalCodeInput) postalCodeInput.value = '';
         amphureSelect.disabled = true;
         tambonSelect.disabled = true;
 
@@ -135,9 +154,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Event listener สำหรับการเปลี่ยนอำเภอ
     amphureSelect.addEventListener("change", function () {
         const amphure = this.value;
         tambonSelect.innerHTML = '<option value="">เลือกตำบล</option>';
+        if (postalCodeInput) postalCodeInput.value = '';
         tambonSelect.disabled = true;
 
         if (amphure) {
@@ -151,6 +172,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         const option = document.createElement("option");
                         option.value = tambon.name_th;
                         option.textContent = tambon.name_th;
+                        option.setAttribute('data-zipcode', tambon.zip_code);
                         tambonSelect.appendChild(option);
                     });
                 })
@@ -160,32 +182,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
         }
     });
-});
-document.addEventListener("DOMContentLoaded", function () {
-    console.log("JavaScript Loaded"); // เพื่อเช็คว่าโค้ดนี้โหลดจริง
 
-    const provinceSelect = document.getElementById("id_province");
-    if (!provinceSelect) {
-        console.error("Province Select Element Not Found"); // Debug หากไม่มี element
-        return;
-    }
-
-    console.log("Province Select Element Found");
-
-    fetch('/api/provinces/')
-        .then(response => response.json())
-        .then(data => {
-            console.log("Provinces Data:", data); // Log ข้อมูลที่ fetch มา
-            data.forEach(province => {
-                const option = document.createElement("option");
-                option.value = province.name_th;
-                option.textContent = province.name_th;
-                provinceSelect.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error("Error fetching provinces:", error); // Log error
-        });
+    // Event listener สำหรับการเปลี่ยนตำบล
+    tambonSelect.addEventListener("change", function() {
+        if (postalCodeInput) {
+            const selectedOption = this.options[this.selectedIndex];
+            const zipCode = selectedOption.getAttribute('data-zipcode');
+            if (zipCode) {
+                postalCodeInput.value = zipCode;
+            }
+        }
+    });
 });
 </script>
 

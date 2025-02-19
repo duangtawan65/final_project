@@ -2,6 +2,48 @@
 {% block main %}
 <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Filter Section -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+            <form method="get" class="flex flex-col md:flex-row gap-4 items-end text-gray-900">
+                <!-- Group Filter -->
+                <div class="flex-1">
+                    <label for="group" class="block text-sm font-medium text-gray-700 mb-1">บทบาท</label>
+                    <select name="group" id="group"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-900">
+                        <option value="">ทั้งหมด</option>
+                        <option value="member" {% if group_filter == 'member' %}selected{% endif %}>สมาชิก</option>
+                        <option value="doctor" {% if group_filter == 'doctor' %}selected{% endif %}>แพทย์</option>
+                        <option value="admin" {% if group_filter == 'admin' %}selected{% endif %}>ผู้ดูแลระบบ</option>
+                    </select>
+                </div>
+
+                <!-- Search -->
+                <div class="flex-1">
+                    <label for="search" class="block text-sm font-medium text-gray-700 mb-1">ค้นหา</label>
+                    <input type="search" name="search" id="search"
+                           value="{{ search_query }}"
+                           placeholder="ค้นหาชื่อผู้ใช้หรืออีเมล"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="flex gap-2">
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/>
+                        </svg>
+                        กรอง
+                    </button>
+                    {% if group_filter or search_query %}
+                    <a href="{% url 'admin_dashboard' %}"
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        ล้างตัวกรอง
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
         <!-- Header Section -->
         <div class="mb-8">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -14,7 +56,7 @@
                             <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
                             </svg>
-                            ผู้ใช้งานทั้งหมด: {{ users.count }}
+                            ผู้ใช้งานทั้งหมด: {{ total_users }}
                         </div>
                     </div>
                 </div>
@@ -146,16 +188,17 @@
                                             บันทึก
                                         </button>
                                     </form>
-                                    <form method="post" class="inline-flex">
+                                    <form method="post" class="inline-flex" onsubmit="return confirmDelete(this);">
                                         {% csrf_token %}
                                         <input type="hidden" name="user_id" value="{{ user.id }}">
                                         <input type="hidden" name="action" value="delete_user">
-                                        <button type="submit"
+                                        <button type="button" onclick="openDeleteDialog('{{ user.id }}', '{{ user.username }}')"
                                                 class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                                             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
                                             </svg>
                                         </button>
+
                                     </form>
                                 </div>
                             </td>
@@ -163,8 +206,123 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                <!-- เพิ่ม Modal ยืนยันการลบ -->
+                <div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 max-w-sm mx-auto">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">ยืนยันการลบผู้ใช้</h3>
+                        <p class="text-sm text-gray-500 mb-4">คุณแน่ใจหรือไม่ที่จะลบผู้ใช้ <span id="deleteUsername" class="font-medium"></span>?</p>
+
+                        <form id="deleteForm" method="post" class="mt-4 flex justify-end space-x-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="user_id" id="deleteUserId">
+                            <input type="hidden" name="action" value="delete_user">
+
+                            <button type="button" onclick="closeDeleteDialog()"
+                                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                                ยกเลิก
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                ลบผู้ใช้
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <!-- Pagination -->
+                {% if users.paginator.num_pages > 1 %}
+                <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                    <div class="flex-1 flex justify-between sm:hidden">
+                        {% if users.has_previous %}
+                        <a href="?page={{ users.previous_page_number }}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                           class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            ก่อนหน้า
+                        </a>
+                        {% endif %}
+                        {% if users.has_next %}
+                        <a href="?page={{ users.next_page_number }}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                           class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            ถัดไป
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                แสดง
+                                <span class="font-medium">{{ users.start_index }}</span>
+                                ถึง
+                                <span class="font-medium">{{ users.end_index }}</span>
+                                จาก
+                                <span class="font-medium">{{ users.paginator.count }}</span>
+                                รายการ
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                {% if users.has_previous %}
+                                <a href="?page={{ users.previous_page_number }}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Previous</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+
+                                {% for i in users.paginator.page_range %}
+                                    {% if users.number == i %}
+                                    <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">
+                                        {{ i }}
+                                    </span>
+                                    {% else %}
+                                    <a href="?page={{ i }}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                        {{ i }}
+                                    </a>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if users.has_next %}
+                                <a href="?page={{ users.next_page_number }}{% if group_filter %}&group={{ group_filter }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}"
+                                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Next</span>
+                                    <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </a>
+                                {% endif %}
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<!-- เพิ่ม JavaScript -->
+<script>
+function openDeleteDialog(userId, username) {
+    const modal = document.getElementById('deleteModal');
+    const usernameSpan = document.getElementById('deleteUsername');
+    const userIdInput = document.getElementById('deleteUserId');
+
+    userIdInput.value = userId;
+    usernameSpan.textContent = username;
+    modal.classList.remove('hidden');
+}
+
+function closeDeleteDialog() {
+    const modal = document.getElementById('deleteModal');
+    modal.classList.add('hidden');
+}
+
+// ปิด modal เมื่อคลิกพื้นหลัง
+document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeDeleteDialog();
+    }
+});
+</script>
 {% endblock %}
