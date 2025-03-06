@@ -50,7 +50,9 @@
                         {% else %}
                             <!-- Regular User Navigation -->
                             <a href="{% url 'home' %}" class="hover:text-gray-600">หน้าแรก</a>
-                            <a href="{% url 'test_history' %}" class="hover:text-gray-600">ประวัติ</a>
+                            {% if user.groups.all.0.name == 'member' %}
+                                <a href="{% url 'test_history' %}" class="hover:text-gray-600">ประวัติ</a>
+                            {% endif %}
                             <a href="{% url 'chat:chat_view' %}" class="hover:text-gray-600">chat ai</a>
 
                             <!-- Articles Dropdown -->

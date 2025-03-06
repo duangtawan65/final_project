@@ -28,6 +28,7 @@ from django.conf import settings
 from django.db.models import Count, Sum, F
 from django.db.models.functions import TruncMonth
 from django.core.paginator import Paginator
+import random
 
 
 
@@ -37,19 +38,14 @@ def home_view(request):
     if request.user.is_staff:
         return redirect('admin_dashboard')
 
-    # If the user is logged in, just render the home page
+    # If the user is logged in, add user group info
     if request.user.is_authenticated:
-
         is_member = request.user.groups.filter(name='member').exists()
-
         is_doctor = request.user.groups.filter(name='doctor').exists()
-
-
-
         return render(request, 'home.html', {'is_member': is_member, 'is_doctor': is_doctor})
 
-    # If not authenticated, redirect to the login page
-    return redirect('login')  # Redirect to login page if the user is not logged in
+
+    return render(request, 'home.html', {'is_member': False, 'is_doctor': False})
 
 
 # Register view
@@ -644,54 +640,65 @@ def admin_dashboard_view(request):
 
     return render(request, "admin_dashboard.html", context)
 
+
+@login_required
 def admin_statistics_view(request):
-    # จำนวนสมาชิก (Profile)
+    # ข้อมูลพื้นฐาน
     total_profiles = Profile.objects.count()
-    # จำนวนแพทย์ (DoctorProfile)
     total_doctors = DoctorProfile.objects.count()
-    # จำนวนแบบทดสอบ (Questionnaire)
     total_questionnaires = Questionnaire.objects.count()
-    # จำนวนการนัดหมาย (Appointment)
     total_appointments = Appointment.objects.count()
 
-    # นับการนัดหมายที่สำเร็จ
-    completed_appointments = Appointment.objects.filter(payment_status='paid').count()
-    # นับการนัดหมายที่ถูกยกเลิก
+    # นับการนัดหมายตามสถานะ
+    completed_appointments = Appointment.objects.filter(status='ended').count()
     canceled_appointments = Appointment.objects.filter(payment_status__in=['canceled', 'expired']).count()
 
-    # หารายได้รวม (สมมติว่าคิดจาก session_rate ของ doctor ที่ผูกกับ Appointment ที่จ่ายสำเร็จ)
-    paid_appointments = Appointment.objects.filter(payment_status='paid')
-    total_revenue = Decimal('0.00')
-    for appt in paid_appointments:
-        if appt.doctor.session_rate:
-            total_revenue += appt.doctor.session_rate
+    # นับจำนวนการนัดหมายที่ชำระเงินแล้ว
+    total_consultations = Appointment.objects.filter(payment_status='paid').count()  # ใช้การนัดหมายที่จ่ายแล้ว
 
-    # ถ้าคุณหัก 20% เป็นค่าระบบ
+    # คำนวณรายได้รวม
+    appointments = Appointment.objects.filter(payment_status='paid')
+    total_revenue = sum(
+        appointment.doctor.session_rate
+        for appointment in appointments
+        if appointment.doctor.session_rate
+    )
+
+    # คำนวณส่วนแบ่ง
     system_fee_total = total_revenue * Decimal('0.20')
     doctor_fee_total = total_revenue - system_fee_total
 
-    # เพิ่มส่วนนี้สำหรับข้อมูลกราฟรายเดือน
-    twelve_months_ago = datetime.now() - timedelta(days=365)
+    # ข้อมูลกราฟรายเดือน
+    appointments_2025 = Appointment.objects.filter(appointment_date__year=2025)
+    all_months_data = []
+    all_months_revenues = []
+    month_labels = []
 
-    monthly_data = Appointment.objects.filter(
-        created_at__gte=twelve_months_ago,
-        payment_status='paid'
-    ).annotate(
-        month=TruncMonth('created_at')
-    ).values('month').annotate(
-        appointment_count=Count('id'),
-        monthly_revenue=Sum(F('doctor__session_rate'))
-    ).order_by('month')
+    THAI_MONTHS = [
+        "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+        "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    ]
 
-    # เตรียมข้อมูลสำหรับ Chart.js
-    months = []
-    appointment_counts = []
-    revenues = []
+    for month in range(1, 13):
+        # ดึงข้อมูลแต่ละเดือน
+        monthly_appointments = appointments_2025.filter(
+            appointment_date__month=month
+        )
 
-    for data in monthly_data:
-        months.append(data['month'].strftime('%B %Y'))
-        appointment_counts.append(data['appointment_count'])
-        revenues.append(float(data['monthly_revenue'] if data['monthly_revenue'] else 0))
+        # จำนวนนัดหมาย
+        appointment_count = monthly_appointments.count()
+        all_months_data.append(appointment_count)
+
+        # รายได้
+        monthly_revenue = sum(
+            appointment.doctor.session_rate
+            for appointment in monthly_appointments.filter(payment_status='paid')
+            if appointment.doctor.session_rate
+        )
+        all_months_revenues.append(float(monthly_revenue))
+
+        # เพิ่มชื่อเดือน
+        month_labels.append(THAI_MONTHS[month - 1])
 
     context = {
         'total_profiles': total_profiles,
@@ -703,10 +710,12 @@ def admin_statistics_view(request):
         'total_revenue': total_revenue,
         'system_fee_total': system_fee_total,
         'doctor_fee_total': doctor_fee_total,
-        'months': months,
-        'appointment_counts': appointment_counts,
-        'revenues': revenues,
+        'months': month_labels,
+        'appointment_counts': all_months_data,
+        'revenues': all_months_revenues,
+        'total_consultations': total_consultations  # ส่งข้อมูลจำนวนการนัดหมายที่จ่ายเงินแล้ว
     }
+
     return render(request, 'admin_statistics.html', context)
 
 
@@ -721,6 +730,7 @@ def is_user_online(user):
 
     # เช็คว่า user_id อยู่ใน active sessions หรือไม่
     return str(user.id) in user_id_list
+
 
 def schedule_view(request):
     if hasattr(request.user, 'doctorprofile'):
@@ -761,9 +771,17 @@ def schedule_view(request):
             appointment.is_in_session = False
             appointment.chat_active = False
 
+    # เพิ่ม Pagination
+
+    paginator = Paginator(appointments, 10)  # แสดง 10 รายการต่อหน้า
+
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        'appointments': appointments,
+        'appointments': page_obj,
         'current_time': now,
+        'page_obj': page_obj,
     }
     return render(request, 'schedule.html', context)
 
@@ -870,7 +888,6 @@ def payment_success(request, appointment_id):
 
 def payment_cancel(request, appointment_id):
     appointment = get_object_or_404(Appointment, id=appointment_id)
-    # ลบออกเลย (หรือเปลี่ยนเป็น appointment.payment_status='canceled')
     appointment.delete()
 
     # ปลดล็อกเวลาหมอ
@@ -923,8 +940,6 @@ def stripe_webhook(request):
         return HttpResponse(status=404)
 
 
-
-
 @login_required
 def doctor_payment_settings(request):
     try:
@@ -937,47 +952,71 @@ def doctor_payment_settings(request):
             'recent_transfers': []
         }
 
-        if doctor.stripe_account_id:
-            # ดึงข้อมูล Stripe Account
-            account = stripe.Account.retrieve(doctor.stripe_account_id)
-            transfers = stripe.Transfer.list(
-                destination=doctor.stripe_account_id,
-                limit=10,
-                expand=['data.destination']
-            )
-            print("Transfers:", transfers)
+        # คำนวณรายได้ทั้งหมด
+        appointments = Appointment.objects.filter(
+            doctor=doctor,
+            payment_status='paid'  # เฉพาะการนัดหมายที่จ่ายเงินแล้ว
+        )
+        total_earnings = sum(doctor.session_rate for appointment in appointments if doctor.session_rate)
+        total_earnings = total_earnings * Decimal('0.8')  # หักค่าธรรมเนียม 20%
 
-            # แปลงข้อมูล transfers
-            formatted_transfers = [{
-                'created': datetime.fromtimestamp(transfer.created),
-                'amount': float(transfer.amount) / 100,  # แปลงจากสตางค์เป็นบาท
-                'status': 'โอนเงินสำเร็จ' if not transfer.reversed else 'ยกเลิก'
-            } for transfer in transfers.data]
+        # คำนวณรายได้เดือนนี้
+        first_day_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0)
+        monthly_appointments = appointments.filter(
+            appointment_date__gte=first_day_of_month
+        )
+        monthly_earnings = sum(doctor.session_rate for appointment in monthly_appointments if doctor.session_rate)
+        monthly_earnings = monthly_earnings * Decimal('0.8')
 
-            # คำนวณรายได้ทั้งหมด
-            appointments = Appointment.objects.filter(
-                doctor=doctor,
-                payment_status='paid'
-            )
-            total_earnings = sum(doctor.session_rate for appointment in appointments)
+        # จำนวนการปรึกษาทั้งหมด (เฉพาะที่จ่ายแล้ว)
+        total_consultations = appointments.count()
 
-            # คำนวณรายได้เดือนนี้
-            first_day_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0)
-            monthly_appointments = appointments.filter(
-                appointment_date__gte=first_day_of_month
-            )
-            monthly_earnings = sum(doctor.session_rate for appointment in monthly_appointments)
+        formatted_transfers = []
 
-            # จำนวนการปรึกษาทั้งหมด
-            total_consultations = appointments.count()
+        # ใช้ข้อมูลการโอนที่จำลอง
+        if not formatted_transfers:
+            # สร้างข้อมูลการโอนเงินจำลอง
+            for month in range(1, 13):
+                month_appointments = appointments.filter(
+                    appointment_date__year=2025,
+                    appointment_date__month=month,
+                    payment_status='paid'  # เฉพาะการนัดหมายที่จ่ายแล้ว
+                )
 
-            context.update({
-                'account_status': 'active' if account.payouts_enabled else 'pending',
-                'total_earnings': total_earnings * Decimal('0.8'),
-                'monthly_earnings': monthly_earnings * Decimal('0.8'),
-                'total_consultations': total_consultations,
-                'recent_transfers': formatted_transfers  # ใช้ข้อมูลที่แปลงแล้ว
-            })
+                if month_appointments.exists():
+                    # คำนวณรายได้ทั้งหมดของเดือนนั้น
+                    total_monthly_revenue = sum(
+                        appointment.doctor.session_rate for appointment in month_appointments if
+                        appointment.doctor.session_rate
+                    )
+
+                    # สุ่มจำนวนการโอน
+                    num_transfers = month_appointments.count()
+
+                    # สุ่มวันที่การโอน
+                    for i in range(num_transfers):
+                        transfer_date = datetime(2025, month, random.randint(25, 28))
+                        transfer_amount = total_monthly_revenue / num_transfers
+                        formatted_transfers.append({
+                            'created': transfer_date,
+                            'amount': float(transfer_amount * Decimal('0.8')),  # หักค่าธรรมเนียม 20%
+                            'status': 'โอนเงินสำเร็จ'
+                        })
+
+            formatted_transfers.sort(key=lambda x: x['created'], reverse=True)
+
+        # ใช้ Paginator
+        paginator = Paginator(formatted_transfers, 5)  # 5 รายการต่อหน้า
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context.update({
+            'account_status': 'active' if doctor.stripe_account_id else 'pending',
+            'total_earnings': total_earnings,
+            'monthly_earnings': monthly_earnings,
+            'total_consultations': total_consultations,  # จำนวนการนัดหมายที่จ่ายเงินแล้ว
+            'recent_transfers': page_obj
+        })
 
         return render(request, 'doctor_payment_settings.html', context)
 

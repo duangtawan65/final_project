@@ -6,18 +6,45 @@
 <div class="bg-black h-screen flex justify-center items-center">
     <div class="bg-gray-900 shadow-lg rounded-lg p-8 max-w-md w-full">
         <h2 class="text-2xl font-semibold text-center text-white mb-6">Login</h2>
+
+        {% if form.errors %}
+        <div class="mb-4 p-3 bg-red-900 text-white rounded-lg" role="alert">
+            <p class="text-sm">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</p>
+        </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+        <div class="mb-4 p-3 bg-red-900 text-white rounded-lg" role="alert">
+            {% for error in form.non_field_errors %}
+            <p class="text-sm">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <form method="post" class="space-y-4">
             {% csrf_token %}
             <!-- Username Field -->
             <div>
                 <label for="username" class="block text-sm font-medium text-gray-300">Username</label>
-                <input type="text" id="username" name="username" class="w-full px-4 py-2 border border-gray-500 rounded-lg bg-black text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your username">
+                <input type="text" id="username" name="username" class="w-full px-4 py-2 border {% if form.username.errors %}border-red-500{% else %}border-gray-500{% endif %} rounded-lg bg-black text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your username" value="{{ form.username.value|default:'' }}">
+                {% if form.username.errors %}
+                <p class="text-red-500 text-xs mt-1">กรุณากรอกชื่อผู้ใช้</p>
+                {% endif %}
             </div>
             <!-- Password Field -->
             <div>
                 <label for="password" class="block text-sm font-medium text-gray-300">Password</label>
-                <input type="password" id="password" name="password" class="w-full px-4 py-2 border border-gray-500 rounded-lg bg-black text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your password">
+                <input type="password" id="password" name="password" class="w-full px-4 py-2 border {% if form.password.errors %}border-red-500{% else %}border-gray-500{% endif %} rounded-lg bg-black text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500" placeholder="Enter your password">
+                {% if form.password.errors %}
+                <p class="text-red-500 text-xs mt-1">กรุณากรอกรหัสผ่าน</p>
+                {% endif %}
             </div>
+
+            <!-- Hidden next field to remember where to redirect after login -->
+            {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
             <!-- Submit Button -->
             <div>
                 <button type="submit" class="w-full py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition duration-200 ease-in-out">Login</button>

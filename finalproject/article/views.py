@@ -32,6 +32,7 @@ def create_article(request):
     except DoctorProfile.DoesNotExist:
         # ถ้าไม่มี DoctorProfile ให้ redirect ไปหน้าขอเป็นหมอ
         return redirect('request_doctor')
+
 def article_list(request):
     articles = Article.objects.all().order_by('-created_at')
     return render(request, 'articles/article_list.html', {'articles': articles})

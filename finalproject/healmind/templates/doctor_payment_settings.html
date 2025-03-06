@@ -120,6 +120,33 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Paginator as numeric links -->
+        <div class="mt-6">
+            <div class="flex justify-center">
+                {% if recent_transfers.has_previous %}
+                <a href="?page=1" class="text-blue-600 px-4 py-2">«</a> <!-- Go to first page -->
+                <a href="?page={{ recent_transfers.previous_page_number }}" class="text-blue-600 px-4 py-2">‹</a> <!-- Go to previous page -->
+                {% endif %}
+
+                {% for num in recent_transfers.paginator.page_range %}
+                    {% if num >= recent_transfers.number|add:"-2" and num <= recent_transfers.number|add:"2" %}
+                        {% if recent_transfers.number == num %}
+                        <span class="px-4 py-2 text-gray-900 font-bold">{{ num }}</span>
+                        {% else %}
+                        <a href="?page={{ num }}" class="text-blue-600 px-4 py-2">{{ num }}</a>
+                        {% endif %}
+                    {% elif num == recent_transfers.paginator.page_range|first or num == recent_transfers.paginator.page_range|last %}
+                        <span class="px-4 py-2 text-gray-600">...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if recent_transfers.has_next %}
+                <a href="?page={{ recent_transfers.next_page_number }}" class="text-blue-600 px-4 py-2">›</a> <!-- Go to next page -->
+                <a href="?page={{ recent_transfers.paginator.num_pages }}" class="text-blue-600 px-4 py-2">»</a> <!-- Go to last page -->
+                {% endif %}
+            </div>
+        </div>
     </div>
     {% endif %}
 </div>

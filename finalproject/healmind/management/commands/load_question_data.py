@@ -125,5 +125,30 @@ class Command(BaseCommand):
                           'stress_level': stress_level, 'result_description': result_description}
             )
 
+        ws_appointments = wb['appointments']
+        for row in ws_appointments.iter_rows(min_row=2, values_only=True):
+            doctor_id, member_id, appointment_date, time, service_mode, status, created_at, payment_status, stripe_payment_id = row
+
+            try:
+                # ดึง DoctorProfile โดยตรง
+                doctor = DoctorProfile.objects.get(user_id=doctor_id)
+                # ดึง Profile โดยตรง
+                member = Profile.objects.get(user_id=member_id)
+
+                Appointment.objects.create(
+                    doctor=doctor,  # ใส่ DoctorProfile object แทน User
+                    member=member,
+                    appointment_date=appointment_date,
+                    time=time,
+                    service_mode=service_mode,
+                    status=status,
+                    created_at=created_at,
+                    payment_status=payment_status,
+                    stripe_payment_id=stripe_payment_id
+                )
+            except (DoctorProfile.DoesNotExist, Profile.DoesNotExist) as e:
+                print(f"Error: {e}")
+                continue
+
         self.stdout.write(self.style.SUCCESS('Data loaded successfully!'))
 

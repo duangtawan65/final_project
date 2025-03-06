@@ -9,12 +9,12 @@
                 <h1 class="text-xl text-gray-700">Chat with AI</h1>
             </div>
 
-            <div id="chat-box" class="max-h-[500px] overflow-y-auto rounded-lg bg-[#f8f9fa] p-4 mb-4">
+            <div id="chat-box" class="max-h-[500px] overflow-y-auto rounded-lg bg-[#f8f9fa] p-4 mb-4 text-gray-900">
                 <div id="messages">
                     {% if user_message %}
                         <!-- ข้อความผู้ใช้ -->
                         <div class="flex justify-end mb-2">
-                            <div class="bg-blue-500 text-white p-3 rounded-lg inline-block max-w-[80%]">
+                            <div class="bg-blue-500 text-gray-900 p-3 rounded-lg inline-block max-w-[80%]">
                                 {{ user_message }}
                             </div>
                         </div>
@@ -51,7 +51,7 @@
                        id="message-input"
                        placeholder="พิมพ์ข้อความ..."
                        required
-                       class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                       class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900">
                 <button type="submit"
                         class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition">
                     ส่ง
