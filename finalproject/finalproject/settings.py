@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-=1do$76xpf^=p^1ay=l_4=cu#^h-%j^t7884i5yt^7zv1(lc4b"
+SECRET_KEY = ""
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -155,7 +155,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'megalodicz@gmail.com'  # อีเมลของคุณ
-EMAIL_HOST_PASSWORD = 'bvmy bovs bnly uple'  # รหัสผ่านที่สร้างจาก Google App Password
+EMAIL_HOST_PASSWORD = ''  # รหัสผ่านที่สร้างจาก Google App Password
 
 LOGIN_URL = '/accounts/login/'
 TEMPLATES[0]['OPTIONS']['debug'] = True
@@ -170,6 +170,6 @@ CHANNEL_LAYERS = {
     }
 }
 
-STRIPE_PUBLISHABLE_KEY = 'pk_test_51Qp1dPJDduzVUOrPdgZi0cJ93epFbhghjK11pxUJ7LZPSwwgeRGmbRE70xhfSiufaiAamgNVQWW2PBISUGwP3jsX00xi4RXw3q'
-STRIPE_SECRET_KEY = 'sk_test_51Qp1dPJDduzVUOrPTfwTNjiw6WBx0qFqOLY5YuupE33Ke8Th3XsQOWF6oFQx2u9lw5J9JiLZicHDXkBuCp4s02SI00Ukg2myPs'
-STRIPE_WEBHOOK_SECRET = 'whsec_4740615e5310934b6fde5e1f587b01bab74b027b705606a3dec2dac7fa393dfc'
+STRIPE_PUBLISHABLE_KEY = ''
+STRIPE_SECRET_KEY = ''
+STRIPE_WEBHOOK_SECRET = ''
